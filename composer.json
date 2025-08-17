@@ -1,0 +1,20 @@
+{
+  "name": "hakam/ai-log-inspector-agent",
+  "description": "AI-powered log inspector agent for PHP",
+  "type": "library",
+  "require": {
+    "php": "^8.2",
+    "symfony/ai-agent": "@dev",
+    "symfony/ai-platform": "@dev",
+    "symfony/ai-store": "@dev"
+  },
+  "autoload": {
+    "psr-4": {
+      "Hakam\\AiLogInspector\\Agent\\": "src/"
+    }
+  },
+  "require-dev": {
+    "symfony/test-pack": "^1.2",
+    "dg/bypass-finals": "^1.9"
+  }
+}
