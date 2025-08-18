@@ -161,25 +161,6 @@ All tool responses follow a consistent structure:
 ]
 ```
 
-## 🧪 Testing
-
-The package includes comprehensive test coverage:
-
-```bash
-# Install dependencies
-composer install
-
-# Run all tests
-vendor/bin/phpunit
-
-# Run specific test suites
-vendor/bin/phpunit --testsuite Unit
-vendor/bin/phpunit --testsuite Integration
-
-# Run with coverage
-vendor/bin/phpunit --coverage-html coverage/
-```
-
 ## ⚙️ Configuration
 
 ### AI Platform Setup
@@ -249,7 +230,6 @@ $agent = new LogInspectorAgent(
 ```
 
 
-
 ## 🤝 Contributing
 
 1. Fork the repository
@@ -258,22 +238,6 @@ $agent = new LogInspectorAgent(
 4. Commit your changes: `git commit -m 'Add amazing feature'`
 5. Push to the branch: `git push origin feature/amazing-feature`
 6. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Built on the experimental [Symfony AI](https://symfony.com/doc/current/ai.html) framework
-- Inspired by modern observability and incident response practices  
-- **Note**: This is an experimental package for research and development purposes
-
-## 📞 Support
-
-- 🐛 **Issues**: [GitHub Issues](https://github.com/hakam/ai-log-inspector-agent/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/hakam/ai-log-inspector-agent/discussions)
-
 ---
 
-**Made with ❤️ for experimental AI-powered log analysis**
+**Made with ❤️ for log analysis and incident investigation!**
