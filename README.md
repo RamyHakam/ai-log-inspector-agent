@@ -4,6 +4,10 @@
 [![Symfony AI](https://img.shields.io/badge/Symfony%20AI-Experimental-orange.svg)](https://symfony.com/doc/current/ai.html)
 [![Status](https://img.shields.io/badge/Status-Experimental-red.svg)](#)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+![Free 🇵🇸](https://img.shields.io/badge/Free-Palestine-green?style=flat-square&logo=data:image/svg+xml;base64,...)
+<span style="font-size: 2em;">🇵🇸</span> 
+
+
 
 > ⚠️ **EXPERIMENTAL PACKAGE** - This package is built on Symfony AI which is currently experimental. Not recommended for production use. No backward compatibility guarantees.
 
