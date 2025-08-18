@@ -21,9 +21,10 @@ final  class LogInspectorAgent
         private PlatformInterface $platform,
         private Model $model,
         private StoreInterface $store,
-        private ?string $systemPrompt = null
+        private ?string $systemPrompt = null,
+        private ?Model $embeddingModel = null
     ) {
-        $tool = new LogSearchTool($store, $platform, $model);
+        $tool = new LogSearchTool($store, $platform, $model, $embeddingModel);
         $toolbox = new Toolbox([
             $tool,
         ]);

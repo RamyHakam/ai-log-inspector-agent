@@ -6,8 +6,11 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Vector\Vector;
+use Symfony\AI\Store\Document\TextDocument;
 use Symfony\AI\Store\Document\VectorDocument;
+use Symfony\AI\Store\Document\Vectorizer;
 use Symfony\AI\Store\StoreInterface;
+use Symfony\Component\Uid\Uuid;
 
 #[AsTool(
     name: 'log_search',
@@ -21,7 +24,8 @@ class LogSearchTool
     public function __construct(
         private readonly StoreInterface $store,
         private readonly PlatformInterface $platform,
-        private readonly Model $model
+        private readonly Model $model,
+        private readonly ?Model $embeddingModel = null
     ) {
     }
 
@@ -49,17 +53,15 @@ class LogSearchTool
 
     private function performSemanticSearch(string $query): array
     {
-        // Convert query text to vector using the platform
-        $vectorResult = $this->platform->invoke($this->model, $query);
-        $vectors = $vectorResult->asVectors();
+        $embeddingModel = $this->embeddingModel ?? $this->model;
+        $vectorizer = new Vectorizer($this->platform, $embeddingModel);
         
-        if (empty($vectors)) {
-            throw new \RuntimeException('Failed to generate vector from query');
-        }
+        $queryDocument = new TextDocument(Uuid::v4(), $query);
         
-        $queryVector = $vectors[0]; // Use the first vector
+        $vectorizedQuery = $vectorizer->vectorizeDocuments([$queryDocument])[0];
+        
+        $queryVector = $vectorizedQuery->vector;
 
-        // Use the vector store to perform semantic search
         $searchResults = $this->store->query($queryVector, ['maxItems' => self::MAX_RESULTS]);
         
         $filteredResults = [];
@@ -83,7 +85,6 @@ class LogSearchTool
             ];
         }
 
-        // Extract log content and metadata for analysis
         $logContents = [];
         $evidenceLogs = [];
         
@@ -128,7 +129,7 @@ class LogSearchTool
             // Use the platform to analyze the logs and extract the reason
             $analysisPrompt = "Analyze these log entries and provide a concise explanation of what caused the error or issue. Focus on the root cause, not just listing what happened:\n\n" . $combinedLogs;
             
-            $analysisResult = $this->platform->invoke($this->model, $analysisPrompt);
+            $analysisResult = $this->platform->invoke($this->model, [$analysisPrompt]);
             $analysis = $analysisResult->asText();
             
             return trim($analysis);
