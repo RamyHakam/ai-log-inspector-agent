@@ -5,15 +5,6 @@
          colors="true"
          bootstrap="test/bootstrap.php"
 >
-    <coverage>
-        <source>
-            <directory>./src</directory>
-        </source>
-        <report>
-            <clover outputFile="coverage.xml"/>
-            <text outputFile="php://stdout"/>
-        </report>
-    </coverage>
     <php>
         <ini name="error_reporting" value="-1"/>
         <ini name="intl.default_locale" value="en"/>
@@ -32,4 +23,9 @@
             <directory>test/Integration</directory>
         </testsuite>
     </testsuites>
+    <coverage>
+        <include>
+            <directory suffix=".php">src</directory>
+        </include>
+    </coverage>
 </phpunit>
