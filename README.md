@@ -1,5 +1,6 @@
 # 🤖 AI Log Inspector Agent
 
+[![Tests](https://github.com/RamyHakam/ai-log-inspector-agent/workflows/Tests/badge.svg)](https://github.com/RamyHakam/ai-log-inspector-agent/actions/workflows/tests.yml)
 [![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-blue.svg)](https://php.net)
 [![Symfony AI](https://img.shields.io/badge/Symfony%20AI-Experimental-orange.svg)](https://symfony.com/doc/current/ai.html)
 [![Status](https://img.shields.io/badge/Status-Experimental-red.svg)](#)

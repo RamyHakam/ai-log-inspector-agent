@@ -1,0 +1,121 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        php-version: ['8.2', '8.3', '8.4']
+        
+    name: PHP ${{ matrix.php-version }} Tests
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php-version }}
+        extensions: mbstring, xml, ctype, json, curl
+        coverage: xdebug
+        tools: composer:v2
+        
+    - name: Get composer cache directory
+      id: composer-cache
+      run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
+      
+    - name: Cache composer dependencies
+      uses: actions/cache@v3
+      with:
+        path: ${{ steps.composer-cache.outputs.dir }}
+        key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+        restore-keys: ${{ runner.os }}-composer-
+        
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest --optimize-autoloader
+      
+    - name: Check code style (if PHP CS Fixer is available)
+      run: |
+        if [ -f vendor/bin/php-cs-fixer ]; then
+          vendor/bin/php-cs-fixer fix --dry-run --diff
+        else
+          echo "PHP CS Fixer not found, skipping code style check"
+        fi
+      continue-on-error: true
+      
+    - name: Run unit tests
+      run: vendor/bin/phpunit --testsuite=Unit --coverage-text --coverage-clover=coverage.xml
+      
+    - name: Run integration tests
+      run: vendor/bin/phpunit --testsuite=Integration
+      
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+        
+  security:
+    runs-on: ubuntu-latest
+    name: Security Analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: mbstring, xml, ctype, json, curl
+        tools: composer:v2
+        
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+      
+    - name: Run security checker (if available)
+      run: |
+        if [ -f vendor/bin/security-checker ]; then
+          vendor/bin/security-checker security:check
+        else
+          echo "Security checker not found, skipping security analysis"
+        fi
+      continue-on-error: true
+      
+  static-analysis:
+    runs-on: ubuntu-latest
+    name: Static Analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: mbstring, xml, ctype, json, curl
+        tools: composer:v2
+        
+    - name: Install dependencies
+      run: composer install --prefer-dist --no-progress --no-suggest
+      
+    - name: Run PHPStan (if available)
+      run: |
+        if [ -f vendor/bin/phpstan ]; then
+          vendor/bin/phpstan analyse
+        else
+          echo "PHPStan not found, skipping static analysis"
+        fi
+      continue-on-error: true
