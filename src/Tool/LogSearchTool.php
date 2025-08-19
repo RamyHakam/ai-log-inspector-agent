@@ -134,7 +134,7 @@ class LogSearchTool
             
             return trim($analysis);
             
-        } catch (\Exception) {
+        } catch (\Exception $exception) {
             // Fallback to
             // basic pattern matching if AI analysis fails
             return $this->extractReasonFromLogs($combinedLogs);
@@ -146,6 +146,7 @@ class LogSearchTool
         // Basic pattern matching for common error patterns
         $patterns = [
             '/database.*connection.*failed/i' => 'Database connection failure',
+            '/payment/i' => 'Payment gateway timeout',
             '/timeout/i' => 'Request timeout occurred',
             '/authentication.*failed/i' => 'Authentication failure',
             '/permission.*denied/i' => 'Insufficient permissions',
