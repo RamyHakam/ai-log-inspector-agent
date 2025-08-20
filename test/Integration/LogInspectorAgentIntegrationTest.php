@@ -2,7 +2,7 @@
 
 namespace Hakam\AiLogInspector\Agent\Test\Integration;
 
-use Hakam\AiLogInspector\Agent\LogInspectorAgent;
+use Hakam\AiLogInspector\Agent\Agent\LogInspectorAgent;
 use Hakam\AiLogInspector\Agent\Tool\LogSearchTool;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Capability;
@@ -257,7 +257,7 @@ class LogInspectorAgentIntegrationTest extends TestCase
     {
         // This test documents that agent integration requires complex MessageBag handling
         // For now, we focus on LogSearchTool integration which demonstrates the core functionality
-        $this->assertInstanceOf(\Hakam\AiLogInspector\Agent\LogInspectorAgent::class, $this->agent);
+        $this->assertInstanceOf(\Hakam\AiLogInspector\Agent\Agent\LogInspectorAgent::class, $this->agent);
         
         // The agent is properly constructed with real Symfony AI components and tool calling capability
         $this->assertNotNull($this->agent);

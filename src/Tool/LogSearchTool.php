@@ -1,6 +1,6 @@
 <?php
 
-namespace Hakam\AiLogInspector\Agent\Tool;
+namespace Hakam\AiLogInspector\Tool;
 
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Platform\Model;

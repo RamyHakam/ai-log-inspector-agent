@@ -6,11 +6,12 @@
     "php": "^8.2",
     "symfony/ai-agent": "@dev",
     "symfony/ai-platform": "@dev",
-    "symfony/ai-store": "@dev"
+    "symfony/ai-store": "@dev",
+    "psr/log": "^3.0"
   },
   "autoload": {
     "psr-4": {
-      "Hakam\\AiLogInspector\\Agent\\": "src/"
+      "Hakam\\AiLogInspector\\": "src/"
     }
   },
   "require-dev": {

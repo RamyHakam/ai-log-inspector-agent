@@ -2,7 +2,7 @@
 
 namespace Hakam\AiLogInspector\Agent\Test\Unit\Tool;
 
-use Hakam\AiLogInspector\Agent\Tool\LogSearchTool;
+use Hakam\AiLogInspector\Tool\LogSearchTool;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\PlatformInterface;

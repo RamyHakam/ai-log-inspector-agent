@@ -108,12 +108,10 @@ composer require hakam/ai-log-inspector-agent
 ```
 
 ### Setup & Use
+
 ```php
 <?php
-use Hakam\AiLogInspector\Agent\LogInspectorAgent;
-use Symfony\AI\Platform\Model;
-use Symfony\AI\Platform\Capability;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Hakam\AiLogInspector\Agent\Agent\LogInspectorAgent;use Symfony\AI\Platform\Capability;use Symfony\AI\Platform\Model;use Symfony\AI\Store\Bridge\Local\InMemoryStore;
 
 // Configure your AI platform
 $platform = new YourAIPlatform(); 

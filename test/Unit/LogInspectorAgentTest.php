@@ -4,10 +4,10 @@ namespace Hakam\AiLogInspector\Agent\Test\Unit;
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
 use PHPUnit\Framework\TestCase;
+use Symfony\AI\Agent\Exception\MissingModelSupportException;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Store\StoreInterface;
-use Symfony\AI\Agent\Exception\MissingModelSupportException;
 
 class LogInspectorAgentTest extends TestCase
 {

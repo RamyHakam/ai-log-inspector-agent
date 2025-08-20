@@ -2,7 +2,7 @@
 
 namespace Hakam\AiLogInspector\Agent;
 
-use Hakam\AiLogInspector\Agent\Tool\LogSearchTool;
+use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\Toolbox\AgentProcessor;
 use Symfony\AI\Agent\Toolbox\Toolbox;
