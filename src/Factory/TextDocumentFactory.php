@@ -11,6 +11,20 @@ use Symfony\Component\Uid\Uuid;
 
 final class TextDocumentFactory
 {
+
+    public static function createFromString(String $stringText): TextDocument
+    {
+        return new TextDocument(
+            id: Uuid::v4(),
+            content: $stringText,
+            metadata: new Metadata([
+                'created_at' => (new DateTimeImmutable())->format(DateTimeInterface::ATOM),
+                'source' => 'string',
+                'string_query' => $stringText,
+            ])
+        );
+
+    }
     public static function createFromVirtualDocument( VirtualLogDocument $document ): TextDocument
     {
         return new TextDocument(

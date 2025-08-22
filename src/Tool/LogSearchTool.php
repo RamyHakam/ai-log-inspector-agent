@@ -2,15 +2,12 @@
 
 namespace Hakam\AiLogInspector\Tool;
 
+use Hakam\AiLogInspector\Factory\TextDocumentFactory;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
+use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
+use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizerInterface;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
-use Symfony\AI\Platform\Model;
-use Symfony\AI\Platform\PlatformInterface;
-use Symfony\AI\Platform\Vector\Vector;
-use Symfony\AI\Store\Document\TextDocument;
 use Symfony\AI\Store\Document\VectorDocument;
-use Symfony\AI\Store\Document\Vectorizer;
-use Symfony\AI\Store\StoreInterface;
-use Symfony\Component\Uid\Uuid;
 
 #[AsTool(
     name: 'log_search',
@@ -22,11 +19,11 @@ class LogSearchTool
     private const MAX_RESULTS = 10;
 
     public function __construct(
-        private readonly StoreInterface $store,
-        private readonly PlatformInterface $platform,
-        private readonly Model $model,
-        private readonly ?Model $embeddingModel = null
-    ) {
+        private readonly VectorLogStoreInterface        $store,
+        private readonly LogDocumentVectorizerInterface $vectorizer,
+        private readonly LogDocumentPlatformInterface   $platform,
+    )
+    {
     }
 
     public function __invoke(string $query): array
@@ -53,20 +50,16 @@ class LogSearchTool
 
     private function performSemanticSearch(string $query): array
     {
-        $embeddingModel = $this->embeddingModel ?? $this->model;
-        $vectorizer = new Vectorizer($this->platform, $embeddingModel);
-        
-        $queryDocument = new TextDocument(Uuid::v4(), $query);
-        
-        $vectorizedQuery = $vectorizer->vectorizeDocuments([$queryDocument])[0];
-        
-        $queryVector = $vectorizedQuery->vector;
 
-        $searchResults = $this->store->query($queryVector, ['maxItems' => self::MAX_RESULTS]);
-        
+        $queryDocument = TextDocumentFactory::createFromString($query);
+        $vectorDocuments = $this->vectorizer->vectorizeLogTextDocuments([$queryDocument])[0];
+        $queryVector = $vectorDocuments->vector;
+
+        $searchResults = $this->store->queryForVector($queryVector, ['maxItems' => self::MAX_RESULTS]);
+
         $filteredResults = [];
         foreach ($searchResults as $result) {
-            if ($result instanceof VectorDocument && 
+            if ($result instanceof VectorDocument &&
                 ($result->score === null || $result->score >= self::RELEVANCE_THRESHOLD)) {
                 $filteredResults[] = $result;
             }
@@ -87,13 +80,13 @@ class LogSearchTool
 
         $logContents = [];
         $evidenceLogs = [];
-        
+
         foreach ($results as $result) {
             if ($result instanceof VectorDocument) {
                 $metadata = $result->metadata;
                 $content = $metadata['content'] ?? 'No content available';
                 $logId = $metadata['log_id'] ?? $result->id->toString();
-                
+
                 $logContents[] = $content;
                 $evidenceLogs[] = [
                     'id' => $logId,
@@ -124,16 +117,16 @@ class LogSearchTool
 
         // Combine logs for analysis
         $combinedLogs = implode("\n", $logContents);
-        
+
         try {
             // Use the platform to analyze the logs and extract the reason
             $analysisPrompt = "Analyze these log entries and provide a concise explanation of what caused the error or issue. Focus on the root cause, not just listing what happened:\n\n" . $combinedLogs;
-            
-            $analysisResult = $this->platform->invoke($this->model, [$analysisPrompt]);
-            $analysis = $analysisResult->asText();
-            
+
+            $analysisResult = $this->platform->__invoke($analysisPrompt);
+            $analysis = $analysisResult->getContent();
+
             return trim($analysis);
-            
+
         } catch (\Exception $exception) {
             // Fallback to
             // basic pattern matching if AI analysis fails

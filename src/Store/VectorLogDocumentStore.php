@@ -2,17 +2,17 @@
 
 namespace Hakam\AiLogInspector\Store;
 
+use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\AI\Store\StoreInterface;
 
 final class VectorLogDocumentStore implements VectorLogStoreInterface
 {
     public function __construct(
-        private StoreInterface $aiStore
+        private readonly StoreInterface $aiStore
     )
     {
     }
-
 
     /**
      * Save log vectors to the store.
@@ -37,5 +37,10 @@ final class VectorLogDocumentStore implements VectorLogStoreInterface
     public function getStore(): StoreInterface
     {
         return $this->aiStore;
+    }
+
+    public function queryForVector(Vector $query, array $options = []): array
+    {
+        return $this->aiStore->query($query, $options);
     }
 }
