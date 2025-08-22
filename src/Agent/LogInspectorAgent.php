@@ -2,37 +2,28 @@
 
 namespace Hakam\AiLogInspector\Agent;
 
-use Hakam\AiLogInspector\Tool\LogSearchTool;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\Toolbox\AgentProcessor;
 use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
-use Symfony\AI\Platform\Model;
-use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
-use Symfony\AI\Store\StoreInterface;
 
 final  class LogInspectorAgent
 {
     private Agent $agent;
 
     public function __construct(
-        private PlatformInterface $platform,
-        private Model $model,
-        private StoreInterface $store,
+        private readonly LogDocumentPlatformInterface $platform,
+        private readonly  iterable $tools,
         private ?string $systemPrompt = null,
-        private ?Model $embeddingModel = null
     ) {
-        $tool = new LogSearchTool($store, $platform, $model, $embeddingModel);
-        $toolbox = new Toolbox([
-            $tool,
-        ]);
+        $toolbox = new Toolbox($this->tools);
         $processor = new AgentProcessor($toolbox);
-
         $this->agent = new Agent(
-            $platform,
-            $model,
+            $this->platform->getPlatform(),
+            $this->platform->getModel(),
             inputProcessors: [$processor],
             outputProcessors: [$processor]
         );

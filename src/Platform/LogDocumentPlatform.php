@@ -3,6 +3,7 @@
 namespace Hakam\AiLogInspector\Platform;
 
 use Hakam\AiLogInspector\Model\LogDocumentModelInterface;
+use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
 
@@ -23,5 +24,10 @@ class LogDocumentPlatform implements LogDocumentPlatformInterface
     {
         $resultPromise = $this->platform->invoke($this->model->getModel(), $query, $options);
        return $resultPromise->getResult();
+    }
+
+    public function getModel(): Model
+    {
+        return $this->model->getModel();
     }
 }

@@ -14,6 +14,11 @@
       "Hakam\\AiLogInspector\\": "src/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Hakam\\AiLogInspector\\Test\\": "test/"
+    }
+  },
   "require-dev": {
     "symfony/test-pack": "^1.2",
     "dg/bypass-finals": "^1.9"

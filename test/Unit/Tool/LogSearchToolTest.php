@@ -1,6 +1,6 @@
 <?php
 
-namespace Hakam\AiLogInspector\Agent\Test\Unit\Tool;
+namespace Hakam\AiLogInspector\Test\Unit\Tool;
 
 use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Hakam\AiLogInspector\Store\VectorLogStoreInterface;

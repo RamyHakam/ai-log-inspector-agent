@@ -1,6 +1,6 @@
 <?php
 
-namespace Hakam\AiLogInspector\Agent\Test\Unit\Service;
+namespace Hakam\AiLogInspector\Test\Unit\Service;
 
 use DateTimeImmutable;
 use Hakam\AiLogInspector\Document\VirtualLogDocument;
