@@ -2,8 +2,8 @@
 
 namespace Hakam\AiLogInspector\Service;
 
+use Hakam\AiLogInspector\Document\TextDocumentFactory;
 use Hakam\AiLogInspector\Document\VirtualLogDocument;
-use Hakam\AiLogInspector\Factory\TextDocumentFactory;
 use Hakam\AiLogInspector\Indexer\VectorLogIndexerInterface;
 
 final readonly class LogProcessorService

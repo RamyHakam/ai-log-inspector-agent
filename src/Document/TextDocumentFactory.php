@@ -1,10 +1,9 @@
 <?php
 
-namespace Hakam\AiLogInspector\Factory;
+namespace Hakam\AiLogInspector\Document;
 
 use DateTimeImmutable;
 use DateTimeInterface;
-use Hakam\AiLogInspector\Document\VirtualLogDocument;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\TextDocument;
 use Symfony\Component\Uid\Uuid;

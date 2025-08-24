@@ -2,7 +2,7 @@
 
 namespace Hakam\AiLogInspector\Tool;
 
-use Hakam\AiLogInspector\Factory\TextDocumentFactory;
+use Hakam\AiLogInspector\Document\TextDocumentFactory;
 use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
 use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizerInterface;
