@@ -13,7 +13,7 @@ use Symfony\AI\Store\Document\VectorDocument;
     name: 'log_search',
     description: 'Search logs semantically for relevant context. Input: user query string.'
 )]
-class LogSearchTool
+class LogSearchTool implements LogInspectorToolInterface
 {
     private const RELEVANCE_THRESHOLD = 0.7;
     private const MAX_RESULTS = 10;
