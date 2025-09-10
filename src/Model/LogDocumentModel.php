@@ -20,4 +20,11 @@ class LogDocumentModel implements LogDocumentModelInterface
     {
         return $this->model;
     }
+    
+    public static function fromModel(Model $model): self
+    {
+        $instance = new self($model->getName(), [], []);
+        $instance->model = $model;
+        return $instance;
+    }
 }

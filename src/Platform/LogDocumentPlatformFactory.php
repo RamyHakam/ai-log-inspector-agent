@@ -12,7 +12,8 @@ final class LogDocumentPlatformFactory
 {
     public static function create(array $config): LogDocumentPlatformInterface
     {
-        $platform =  match($config['provider']) {
+        $provider = $config['provider'];
+        $platform =  match($provider) {
             'openai' => OpenAiPlatformFactory::create($config['api_key']),
             'anthropic' =>
             AnthropicPlatformFactory::create($config['api_key']),
@@ -21,7 +22,7 @@ final class LogDocumentPlatformFactory
             'ollama' => OllamaPlatformFactory::create($config['host']),
             // ... other providers will be added in the future
         };
-        $model = LogDocumentModelFactory::create($config['model']);
+        $model = LogDocumentModelFactory::create($config['model'], $provider);
         return new LogDocumentPlatform($platform, $model);
     }
 }
