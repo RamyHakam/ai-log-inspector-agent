@@ -55,8 +55,8 @@ jobs:
     - name: Run unit tests
       run: vendor/bin/phpunit --testsuite=Unit
       
-#    - name: Run integration tests
-#      run: vendor/bin/phpunit --testsuite=Integration
+    - name: Run integration tests
+      run: vendor/bin/phpunit --testsuite=Integration
 
   security:
     runs-on: ubuntu-latest

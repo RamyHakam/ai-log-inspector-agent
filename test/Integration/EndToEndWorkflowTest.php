@@ -1,17 +1,20 @@
 <?php
 
-namespace Hakam\AiLogInspector\Agent\Test\Integration;
+namespace Hakam\AiLogInspector\Test\Integration;
 
-use Hakam\AiLogInspector\Agent\Agent\LogInspectorAgent;
+use Hakam\AiLogInspector\Agent\LogInspectorAgent;
+use Hakam\AiLogInspector\Model\LogDocumentModel;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
+use Hakam\AiLogInspector\Tool\LogSearchTool;
 use PHPUnit\Framework\TestCase;
+use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
+use Symfony\AI\Platform\Capability;
 use Symfony\AI\Platform\InMemoryPlatform;
 use Symfony\AI\Platform\Model;
-use Symfony\AI\Platform\Result\TextResult;
-use Symfony\AI\Platform\Result\VectorResult;
-use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Bridge\Local\InMemoryStore;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
+use Symfony\AI\Platform\Vector\Vector;
 use Symfony\Component\Uid\Uuid;
 
 /**
@@ -19,24 +22,27 @@ use Symfony\Component\Uid\Uuid;
  */
 class EndToEndWorkflowTest extends TestCase
 {
-    private InMemoryPlatform $platform;
+    private InMemoryPlatform $symnfonyPlatform;
+    private LogDocumentPlatform $platform;
     private InMemoryStore $store;
-    private Model $model;
+    private LogDocumentModel $model;
     private LogInspectorAgent $agent;
 
     protected function setUp(): void
     {
-        $this->platform = new InMemoryPlatform();
         $this->store = new InMemoryStore();
-        $this->model = new Model('production-log-analyzer');
+        $this->model = new LogDocumentModel('production-log-analyzer', [Capability::TOOL_CALLING]);
         
         $this->setupProductionLikeLogData();
-        $this->setupComprehensiveMockResponses();
+        $this->symnfonyPlatform = $this->createMockSymfonyPlatform();
+        $this->platform = new LogDocumentPlatform($this->symnfonyPlatform, $this->model);
+        
+        // Create a simple mock tool for the agent
+        $tools = [$this->createMockLogSearchTool()];
         
         $this->agent = new LogInspectorAgent(
             $this->platform,
-            $this->model,
-            $this->store,
+            $tools,
             'You are an AI Log Inspector for production systems. Analyze logs systematically, provide actionable insights, and always cite log IDs. Focus on root causes and business impact.'
         );
     }
@@ -178,71 +184,94 @@ class EndToEndWorkflowTest extends TestCase
         }
     }
 
-    private function setupComprehensiveMockResponses(): void
+    private function createMockSymfonyPlatform(): InMemoryPlatform
     {
-        // Incident investigation queries
-        $this->platform->addMockResponse(
-            'production-log-analyzer',
-            'what happened during the outage between 14:20 and 14:30',
-            new VectorResult(new Vector([0.4, 0.4, 0.5, 0.6, 0.5]))
-        );
+        return new InMemoryPlatform(function (Model $model, array|string|object $input, array $options = []): string {
+            $query = is_string($input) ? $input : serialize($input);
+            
+            // Map different queries to appropriate responses
+            return match (true) {
+                str_contains($query, 'what happened during the outage between 14:20 and 14:30') =>
+                    'Traffic spike overwhelmed database capacity causing cascade failure. The incident started with high traffic (1250 concurrent users, traffic_spike_001) which saturated the database connection pool (85% utilization, db_warning_001). This led to "too many connections" errors (db_error_001), triggering the circuit breaker after 5 consecutive failures (circuit_breaker_001). With the database circuit breaker open, the checkout service became unavailable (service_unavailable_001), resulting in service unavailable errors for users. Root cause: insufficient database connection pool capacity for traffic spikes.',
+                
+                str_contains($query, 'why did checkout fail with service unavailable') =>
+                    'Checkout service became unavailable due to upstream dependency failure. The service unavailable error in the CheckoutController (service_unavailable_001) indicates that a critical dependency (likely the database based on concurrent issues) was not responding, causing the checkout process to fail gracefully rather than timeout.',
+                
+                str_contains($query, 'database connection issues and circuit breaker') =>
+                    'Database overwhelmed leading to circuit breaker activation. The database reached its maximum connection limit (1040 - too many connections, db_error_001), causing repeated connection failures. After 5 consecutive failures, the circuit breaker opened (circuit_breaker_001) to prevent further damage and allow the database to recover. This is a protective measure indicating the database was under excessive load.',
+                
+                str_contains($query, 'security threats and brute force attacks') =>
+                    'Brute force attack detected and mitigated. An attacker from IP 203.0.113.42 attempted to compromise the admin account with 15 failed login attempts in 5 minutes (security_threat_001). The security system correctly identified this as a brute force attack (threat score: 95) and automatically blocked the IP (security_block_001) for 1 hour to prevent further attacks.',
+                
+                str_contains($query, 'walk me through the timeline') =>
+                    '14:20:15 - High traffic detected: 1250 concurrent users, 2.3s response time (traffic_spike_001). 14:22:30 - Database connection pool at 85% utilization (db_warning_001). 14:24:12 - Database connection failures: too many connections (db_error_001). 14:25:33 - circuit breaker opened after 5 failures (circuit_breaker_001). 14:26:45 - Checkout service unavailable (service_unavailable_001). 14:28:20 - Auto-scaling triggered (autoscaling_001). 14:30:05 - circuit breaker closed, service restored (circuit_breaker_restored_001).',
+                
+                str_contains($query, 'business impact of the checkout failures') =>
+                    'checkout service unavailable caused direct revenue impact. Service_unavailable_001 shows user_id 1001 unable to complete $299.99 cart_total purchase. This affected customer experience and potential lost sales during the outage period.',
+                
+                str_contains($query, 'prevent similar database overload') =>
+                    'To prevent database overload: 1) Increase connection pool size based on peak traffic analysis, 2) Implement better connection pooling strategies, 3) Add database read replicas for load distribution, 4) Improve query optimization to reduce connection time, 5) Set up proactive monitoring for connection pool utilization before reaching critical thresholds.',
+                
+                str_contains($query, 'payment service failure affected other systems') =>
+                    'Payment service failure cascaded through multiple systems. Payment timeout (payment_error_001) occurred alongside database connection issues, affecting checkout flow (service_unavailable_001) and causing service unavailable errors for users trying to complete purchases.',
+                
+                str_contains($query, 'system successfully recovered') =>
+                    'System recovery was successful through multiple mechanisms. circuit breaker closed indicating database recovery (circuit_breaker_restored_001), autoscaling doubled capacity from 3 to 6 instances (autoscaling_001), and service restoration was confirmed after 60 seconds.',
+                
+                str_contains($query, 'performance metrics indicate the severity') =>
+                    'Performance metrics show high severity: 1250 concurrent users exceeded normal capacity (traffic_spike_001), 95th percentile response time degraded to 2.3s indicating system stress, 450 request rate overwhelmed database connection pool capacity.',
+                
+                str_contains($query, 'first sign of trouble') =>
+                    'First sign was the traffic spike at 14:20:15 showing 1250 concurrent users with 2.3s response times (traffic_spike_001), indicating system was beginning to struggle under load.',
+                
+                str_contains($query, 'cascaded from the initial problem') =>
+                    'Traffic spike caused database connection pool saturation (db_warning_001), leading to connection failures (db_error_001), circuit breaker activation (circuit_breaker_001), and ultimately service unavailable errors (service_unavailable_001).',
+                
+                str_contains($query, 'final resolution') =>
+                    'Resolution achieved through autoscaling to 6 instances (autoscaling_001) and circuit breaker restoration (circuit_breaker_restored_001) after database recovered.',
+                
+                str_contains($query, 'analyze the checkout service failure') =>
+                    'Checkout service failure root cause: upstream database dependency became unavailable due to connection pool exhaustion. Service_unavailable_001 shows graceful failure handling in CheckoutController when database circuit breaker was open (circuit_breaker_001).',
+                
+                str_contains($query, 'correlation between traffic spikes and database failures') =>
+                    'Strong correlation: traffic spike (traffic_spike_001) at 14:20 with 1250 users directly led to database pool saturation (db_warning_001) at 14:22, then connection failures (db_error_001) at 14:24. Traffic overwhelmed database capacity causing cascade failure.',
+                
+                str_contains($query, 'security measures were effective') =>
+                    'Security measures worked effectively: brute force detection identified 15 failed attempts (security_threat_001), automatic IP blocking prevented further attacks (security_block_001), threat score of 95 correctly classified high-risk activity.',
+                
+                str_contains($query, 'autoscaling respond to performance degradation') =>
+                    'Autoscaling responded appropriately by doubling capacity from 3 to 6 instances (autoscaling_001) when CPU utilization reached 89% and memory 76%, helping restore service availability.',
+                
+                str_contains($query, 'monitoring alerts should have fired') =>
+                    'Key alerts should have fired: database connection pool threshold (85% utilization from db_warning_001), high response time alert (2.3s from traffic_spike_001), circuit breaker state change (circuit_breaker_001), service availability alerts (service_unavailable_001).',
+                
+                default => 'Based on the log analysis, I can see various incidents including traffic spikes (traffic_spike_001), database issues (db_error_001, circuit_breaker_001), payment failures (payment_error_001), service outages (service_unavailable_001), and security events (security_threat_001, security_block_001). The system showed good resilience with autoscaling (autoscaling_001) and recovery (circuit_breaker_restored_001).'
+            };
+        });
+    }
 
-        $this->platform->addMockResponse(
-            'production-log-analyzer',
-            'why did checkout fail with service unavailable',
-            new VectorResult(new Vector([0.8, 0.0, 0.3, 0.7, 0.2]))
-        );
-
-        $this->platform->addMockResponse(
-            'production-log-analyzer',
-            'database connection issues and circuit breaker',
-            new VectorResult(new Vector([0.0, 0.2, 0.9, 0.1, 0.6]))
-        );
-
-        $this->platform->addMockResponse(
-            'production-log-analyzer',
-            'security threats and brute force attacks',
-            new VectorResult(new Vector([0.9, 0.8, 0.0, 0.3, 0.1]))
-        );
-
-        // Complex analysis responses
-        $this->platform->addMockResponse(
-            'production-log-analyzer',
-            'Analyze these log entries and provide a concise explanation of what caused the error or issue. Focus on the root cause, not just listing what happened:
-
-[2024-01-15 14:20:15] production.INFO: High traffic detected: 1250 concurrent users, 95th percentile response time: 2.3s {"concurrent_users": 1250, "response_time_p95": 2300, "request_rate": 450} []
-[2024-01-15 14:22:30] production.WARNING: Database connection pool utilization at 85% {"active_connections": 17, "max_connections": 20, "queue_length": 12} []
-[2024-01-15 14:24:12] production.ERROR: Doctrine\\DBAL\\Exception\\ConnectionException: SQLSTATE[HY000] [1040] Too many connections {"sql": "SELECT * FROM orders WHERE status = \'pending\'", "connection_attempts": 5} []
-[2024-01-15 14:25:33] production.CRITICAL: CircuitBreakerOpen: Database circuit breaker opened due to 5 consecutive failures {"service": "database", "failure_count": 5, "threshold": 5, "timeout": 60} []
-[2024-01-15 14:26:45] production.ERROR: Symfony\\Component\\HttpKernel\\Exception\\ServiceUnavailableHttpException: Service temporarily unavailable in CheckoutController@process {"request_id": "req_789xyz", "user_id": 1001, "cart_total": 299.99} []',
-            new TextResult('Traffic spike overwhelmed database capacity causing cascade failure. The incident started with high traffic (1250 concurrent users) which saturated the database connection pool (85% utilization). This led to "too many connections" errors, triggering the circuit breaker after 5 consecutive failures. With the database circuit breaker open, the checkout service became unavailable, resulting in service unavailable errors for users. Root cause: insufficient database connection pool capacity for traffic spikes.')
-        );
-
-        $this->platform->addMockResponse(
-            'production-log-analyzer',
-            'Analyze these log entries and provide a concise explanation of what caused the error or issue. Focus on the root cause, not just listing what happened:
-
-[2024-01-15 14:26:45] production.ERROR: Symfony\\Component\\HttpKernel\\Exception\\ServiceUnavailableHttpException: Service temporarily unavailable in CheckoutController@process {"request_id": "req_789xyz", "user_id": 1001, "cart_total": 299.99} []',
-            new TextResult('Checkout service became unavailable due to upstream dependency failure. The service unavailable error in the CheckoutController indicates that a critical dependency (likely the database based on concurrent issues) was not responding, causing the checkout process to fail gracefully rather than timeout.')
-        );
-
-        $this->platform->addMockResponse(
-            'production-log-analyzer',
-            'Analyze these log entries and provide a concise explanation of what caused the error or issue. Focus on the root cause, not just listing what happened:
-
-[2024-01-15 14:24:12] production.ERROR: Doctrine\\DBAL\\Exception\\ConnectionException: SQLSTATE[HY000] [1040] Too many connections {"sql": "SELECT * FROM orders WHERE status = \'pending\'", "connection_attempts": 5} []
-[2024-01-15 14:25:33] production.CRITICAL: CircuitBreakerOpen: Database circuit breaker opened due to 5 consecutive failures {"service": "database", "failure_count": 5, "threshold": 5, "timeout": 60} []',
-            new TextResult('Database overwhelmed leading to circuit breaker activation. The database reached its maximum connection limit (1040 - too many connections), causing repeated connection failures. After 5 consecutive failures, the circuit breaker opened to prevent further damage and allow the database to recover. This is a protective measure indicating the database was under excessive load.')
-        );
-
-        $this->platform->addMockResponse(
-            'production-log-analyzer',
-            'Analyze these log entries and provide a concise explanation of what caused the error or issue. Focus on the root cause, not just listing what happened:
-
-[2024-01-15 11:45:30] security.WARNING: Multiple failed login attempts detected {"ip": "203.0.113.42", "user": "admin", "attempts": 15, "timeframe": 300, "country": "Unknown"} []
-[2024-01-15 11:47:15] security.CRITICAL: IP blocked due to suspicious activity {"ip": "203.0.113.42", "reason": "brute_force_attack", "block_duration": 3600, "threat_score": 95} []',
-            new TextResult('Brute force attack detected and mitigated. An attacker from IP 203.0.113.42 attempted to compromise the admin account with 15 failed login attempts in 5 minutes. The security system correctly identified this as a brute force attack (threat score: 95) and automatically blocked the IP for 1 hour to prevent further attacks.')
-        );
+    private function createMockLogSearchTool(): object
+    {
+        return new #[AsTool(name: 'log_search', description: 'Search logs for testing')] class() {
+            public function __invoke(string $query): array
+            {
+                // Return mock search results that match what the tests expect
+                return [
+                    'success' => true,
+                    'reason' => 'Mock search result for testing purposes',
+                    'evidence_logs' => [
+                        [
+                            'id' => 'traffic_spike_001',
+                            'content' => '[2024-01-15 14:20:15] production.INFO: High traffic detected: 1250 concurrent users, 95th percentile response time: 2.3s',
+                            'timestamp' => '2024-01-15T14:20:15Z',
+                            'level' => 'info',
+                            'source' => 'load-balancer',
+                            'tags' => ['traffic', 'performance', 'monitoring']
+                        ]
+                    ]
+                ];
+            }
+        };
     }
 
     public function testCompleteIncidentInvestigation(): void

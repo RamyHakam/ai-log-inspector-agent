@@ -1,9 +1,14 @@
 <?php
 
-namespace Hakam\AiLogInspector\Agent\Test\Integration;
+namespace Hakam\AiLogInspector\Test\Integration;
 
-use Hakam\AiLogInspector\Agent\Tool\LogSearchTool;
+use Hakam\AiLogInspector\Model\LogDocumentModel;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
+use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
+use Hakam\AiLogInspector\Tool\LogSearchTool;
+use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizerInterface;
 use PHPUnit\Framework\TestCase;
+use Symfony\AI\Platform\Capability;
 use Symfony\AI\Platform\InMemoryPlatform;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\ResultInterface;
@@ -17,25 +22,38 @@ use Symfony\Component\Uid\Uuid;
 
 class LogSearchToolIntegrationTest extends TestCase
 {
-    private InMemoryPlatform $platform;
+    private InMemoryPlatform $symfonyPlatform;
+    private LogDocumentPlatform $platform;
     private InMemoryStore $store;
-    private Model $model;
+    private LogDocumentModel $model;
+    private VectorLogStoreInterface $mockStore;
+    private LogDocumentVectorizerInterface $mockVectorizer;
     private LogSearchTool $tool;
 
     protected function setUp(): void
     {
         $this->store = new InMemoryStore();
-        $this->model = new Model('test-model');
+        $this->model = new LogDocumentModel('test-model', [Capability::TOOL_CALLING]);
 
-        $this->platform = new InMemoryPlatform(
+        $this->symfonyPlatform = new InMemoryPlatform(
             function (Model $model, array|string|object $input, array $options = []) {
                 return $this->handleRequest($input);
             }
         );
 
+        $this->platform = new LogDocumentPlatform($this->symfonyPlatform, $this->model);
+
         $this->setupRealWorldLogData();
 
-        $this->tool = new LogSearchTool($this->store, $this->platform, $this->model);
+        // Create mock interfaces for LogSearchTool
+        $this->mockStore = $this->createMockVectorLogStore();
+        $this->mockVectorizer = $this->createMockVectorizer();
+
+        $this->tool = new LogSearchTool(
+            $this->mockStore,
+            $this->mockVectorizer,
+            $this->platform
+        );
     }
 
     private function handleRequest(array|string|object $input): ResultInterface
@@ -218,6 +236,62 @@ class LogSearchToolIntegrationTest extends TestCase
             $document = new VectorDocument(Uuid::v4(), $vector, $metadata);
             $this->store->add($document);
         }
+    }
+
+    private function createMockVectorLogStore(): VectorLogStoreInterface
+    {
+        $mockStore = $this->createMock(VectorLogStoreInterface::class);
+        
+        // Configure mock to return relevant documents based on query vector
+        $mockStore->method('queryForVector')
+            ->willReturnCallback(function ($vector, $options = []) {
+                // Return documents from the real store based on similarity
+                $results = $this->store->query($vector, $options);
+                return $results;
+            });
+        
+        return $mockStore;
+    }
+
+    private function createMockVectorizer(): LogDocumentVectorizerInterface
+    {
+        $mockVectorizer = $this->createMock(LogDocumentVectorizerInterface::class);
+        
+        // Configure mock to return vector documents
+        $mockVectorizer->method('vectorizeLogTextDocuments')
+            ->willReturnCallback(function ($documents) {
+                // Simple mock: return first document with a default vector
+                if (empty($documents)) {
+                    return [];
+                }
+                
+                $firstDoc = $documents[0];
+                $content = $firstDoc->content ?? '';
+                
+                // Generate different vectors based on content keywords
+                if (str_contains(strtolower($content), 'checkout') || str_contains(strtolower($content), 'payment')) {
+                    $vector = new Vector([0.8, 0.1, 0.2, 0.9, 0.3]);
+                } elseif (str_contains(strtolower($content), 'authentication') || str_contains(strtolower($content), 'login')) {
+                    $vector = new Vector([0.1, 0.9, 0.0, 0.2, 0.8]);
+                } elseif (str_contains(strtolower($content), 'memory') || str_contains(strtolower($content), 'performance')) {
+                    $vector = new Vector([0.3, 0.4, 0.9, 0.0, 0.1]);
+                } elseif (str_contains(strtolower($content), 'api') || str_contains(strtolower($content), 'timeout')) {
+                    $vector = new Vector([0.6, 0.1, 0.4, 0.7, 0.5]);
+                } elseif (str_contains(strtolower($content), 'file') || str_contains(strtolower($content), 'permission')) {
+                    $vector = new Vector([0.2, 0.7, 0.1, 0.4, 0.6]);
+                } else {
+                    $vector = new Vector([0.5, 0.5, 0.5, 0.5, 0.5]);
+                }
+                
+                $metadata = new Metadata([
+                    'content' => $content,
+                    'query_type' => 'search'
+                ]);
+                
+                return [new VectorDocument(Uuid::v4(), $vector, $metadata)];
+            });
+        
+        return $mockVectorizer;
     }
 
     public function testAnalyzeEcommerceCheckoutFailure(): void
