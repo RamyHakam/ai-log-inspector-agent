@@ -4,6 +4,7 @@ namespace Hakam\AiLogInspector\Platform;
 
 use Hakam\AiLogInspector\Model\LogDocumentModelFactory;
 use Symfony\AI\Platform\Bridge\Anthropic\PlatformFactory as AnthropicPlatformFactory;
+use Symfony\AI\Platform\Bridge\Ollama\PlatformFactory as OllamaPlatformFactory;
 use Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory as OpenAiPlatformFactory;
 use Symfony\AI\Platform\Bridge\VertexAi\PlatformFactory as VertexAiPlatformFactory;
 
@@ -17,6 +18,7 @@ final class LogDocumentPlatformFactory
             AnthropicPlatformFactory::create($config['api_key']),
             'vertex_ai' =>
             VertexAiPlatformFactory::create($config['location'], $config['project_id']),
+            'ollama' => OllamaPlatformFactory::create($config['host']),
             // ... other providers will be added in the future
         };
         $model = LogDocumentModelFactory::create($config['model']);
