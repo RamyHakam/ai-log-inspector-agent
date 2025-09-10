@@ -1,0 +1,76 @@
+name: Functional Tests with Ollama
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  functional-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, json, tokenizer
+    
+    - name: Install Composer dependencies
+      run: composer install --prefer-dist --no-progress
+    
+    # Install Ollama
+    - name: Install Ollama
+      run: |
+        curl -fsSL https://ollama.com/install.sh | sh
+        
+    # Start Ollama service in background
+    - name: Start Ollama service
+      run: |
+        ollama serve &
+        sleep 10  # Wait for service to start
+        
+    # Pull a lightweight model for testing (fastest options)
+    - name: Pull Ollama model
+      run: |
+        # Use smallest, fastest model with tool calling for CI
+        ollama pull llama3.2:1b  # 1.3GB, fast inference with tool calling
+        # Alternative: ollama pull phi:2.7b  # Larger but good quality
+        
+    # Verify Ollama is working
+    - name: Test Ollama connection
+      run: |
+        curl -X POST http://localhost:11434/api/generate \
+          -H "Content-Type: application/json" \
+          -d '{"model": "llama3.2:1b", "prompt": "Test", "stream": false}' \
+          | jq -r '.response // "No response"'
+    
+    # Run functional tests
+    - name: Run Functional Tests
+      env:
+        OLLAMA_URL: http://localhost:11434
+        OLLAMA_MODEL: llama3.2:1b
+      run: |
+        vendor/bin/phpunit test/Functional/ --testdox
+        
+    # Also run a quick smoke test
+    - name: Smoke test Ollama integration
+      env:
+        OLLAMA_URL: http://localhost:11434
+        OLLAMA_MODEL: llama3.2:1b
+      run: |
+        vendor/bin/phpunit test/Functional/UserStoryFunctionalTest.php::testDevOpsIncidentTriage --testdox
+        
+    # Upload test results
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: functional-test-results
+        path: |
+          test-results/
+          coverage/

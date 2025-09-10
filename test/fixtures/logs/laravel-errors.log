@@ -1,0 +1,19 @@
+[2025-01-15 14:23:12] production.ERROR: SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax {"exception":"[object] (Illuminate\\Database\\QueryException(code: 42000): SQLSTATE[42000]: Syntax error or access violation: 1064 You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near 'ORDER BY created_at DESC LIMIT 10' at line 1 (SQL: SELECT * FROM users WHERE ORDER BY created_at DESC LIMIT 10) at /var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:712)","user_id":1234,"request_id":"req_laravel_001"}
+
+[2025-01-15 14:24:45] production.ERROR: Class 'App\\Services\\PaymentService' not found {"exception":"[object] (Error(code: 0): Class 'App\\Services\\PaymentService' not found at /var/www/html/app/Http/Controllers/CheckoutController.php:45)","route":"POST /api/checkout","user_id":5678,"request_id":"req_laravel_002"}
+
+[2025-01-15 14:26:33] production.ERROR: Maximum execution time of 30 seconds exceeded {"exception":"[object] (Symfony\\Component\\ErrorHandler\\Error\\FatalError(code: 0): Maximum execution time of 30 seconds exceeded at /var/www/html/app/Services/ReportGenerator.php:123)","memory_usage":"128MB","user_id":9012,"request_id":"req_laravel_003"}
+
+[2025-01-15 14:28:17] production.ERROR: Attempt to read property "email" on null {"exception":"[object] (Error(code: 0): Attempt to read property \"email\" on null at /var/www/html/app/Http/Controllers/UserController.php:87)","route":"GET /api/user/profile","user_id":null,"request_id":"req_laravel_004"}
+
+[2025-01-15 14:30:52] production.ERROR: SQLSTATE[HY000] [2002] Connection refused {"exception":"[object] (Illuminate\\Database\\QueryException(code: 2002): SQLSTATE[HY000] [2002] Connection refused (SQL: SELECT * FROM sessions WHERE id = 'laravel_session_abc123') at /var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:712)","connection":"mysql","host":"127.0.0.1","port":3306,"request_id":"req_laravel_005"}
+
+[2025-01-15 14:32:18] production.ERROR: Redis connection failed: Connection refused {"exception":"[object] (Predis\\Connection\\ConnectionException(code: 111): Connection refused [tcp://127.0.0.1:6379] at /var/www/html/vendor/predis/predis/src/Connection/AbstractConnection.php:155)","service":"cache","request_id":"req_laravel_006"}
+
+[2025-01-15 14:34:29] production.ERROR: Stripe payment failed: Your card was declined {"exception":"[object] (Stripe\\Exception\\CardException(code: card_declined): Your card was declined. at /var/www/html/app/Services/StripePaymentService.php:78)","amount":9999,"currency":"USD","customer":"cus_stripe_123","request_id":"req_laravel_007"}
+
+[2025-01-15 14:36:41] production.ERROR: File not found: /storage/app/uploads/avatar_123.jpg {"exception":"[object] (Illuminate\\Contracts\\Filesystem\\FileNotFoundException(code: 0): File not found at path: /storage/app/uploads/avatar_123.jpg at /var/www/html/vendor/laravel/framework/src/Illuminate/Filesystem/FilesystemAdapter.php:449)","user_id":1234,"action":"profile_update","request_id":"req_laravel_008"}
+
+[2025-01-15 14:38:55] production.ERROR: JWT Token has expired {"exception":"[object] (Tymon\\JWTAuth\\Exceptions\\TokenExpiredException(code: 0): Token has expired at /var/www/html/vendor/tymon/jwt-auth/src/JWT.php:123)","token_exp":1642256400,"current_time":1642259999,"user_id":4567,"request_id":"req_laravel_009"}
+
+[2025-01-15 14:41:02] production.ERROR: Queue connection failed: SQLSTATE[HY000] [1040] Too many connections {"exception":"[object] (Illuminate\\Database\\QueryException(code: 1040): SQLSTATE[HY000] [1040] Too many connections (SQL: SELECT * FROM jobs WHERE queue = 'default' LIMIT 1) at /var/www/html/vendor/laravel/framework/src/Illuminate/Database/Connection.php:712)","queue":"default","connection":"mysql","request_id":"req_laravel_010"}

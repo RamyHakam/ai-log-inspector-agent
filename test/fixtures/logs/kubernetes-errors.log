@@ -1,0 +1,19 @@
+[2025-01-15 14:20:15] ERROR: Pod/user-service-7d8f9b6c4d-x9k2m - OOMKilled: container 'user-service' in pod 'user-service-7d8f9b6c4d-x9k2m' was OOMKilled {"namespace":"production","container":"user-service","memory_limit":"512Mi","memory_usage":"520Mi","node":"worker-node-3","reason":"OOMKilled"}
+
+[2025-01-15 14:21:33] ERROR: Pod/payment-api-5c7b8a9f2e-h4j6l - ImagePullBackOff: Failed to pull image 'payment-api:v2.3.1' {"namespace":"production","container":"payment-api","image":"payment-api:v2.3.1","registry":"registry.company.com","error":"pull access denied","node":"worker-node-1"}
+
+[2025-01-15 14:22:47] ERROR: Service/nginx-ingress-controller - Readiness probe failed: HTTP probe failed with statuscode: 503 {"namespace":"kube-system","service":"nginx-ingress-controller","pod":"nginx-ingress-controller-7f8c6d5b4e-m9n2p","endpoint":"http://10.244.1.15:10254/healthz","status_code":503}
+
+[2025-01-15 14:24:02] ERROR: Pod/database-replica-6b9c8d7e5f-q3r4t - CrashLoopBackOff: container 'postgres' is crash looping {"namespace":"production","container":"postgres","exit_code":1,"restart_count":5,"crash_reason":"postgresql failed to start","node":"worker-node-2"}
+
+[2025-01-15 14:25:28] ERROR: Node/worker-node-4 - NotReady: kubelet stopped posting node status {"node":"worker-node-4","condition":"NotReady","reason":"NodeStatusUnknown","last_heartbeat":"2025-01-15T14:20:15Z","taints":["node.kubernetes.io/unreachable:NoExecute"]}
+
+[2025-01-15 14:26:44] ERROR: PersistentVolumeClaim/app-data-storage - ProvisioningFailed: Failed to provision volume {"namespace":"production","pvc":"app-data-storage","storage_class":"fast-ssd","requested_size":"100Gi","error":"insufficient resources","zone":"us-west-2a"}
+
+[2025-01-15 14:28:01] ERROR: Pod/redis-cluster-0 - Liveness probe failed: dial tcp 10.244.2.20:6379: connection refused {"namespace":"production","service":"redis-cluster","pod":"redis-cluster-0","probe_type":"tcp","port":6379,"failure_count":3}
+
+[2025-01-15 14:29:19] ERROR: Deployment/auth-service - ReplicaSet has zero available replicas {"namespace":"production","deployment":"auth-service","desired_replicas":3,"available_replicas":0,"reason":"Insufficient cpu","resource_requests":"500m cpu per pod"}
+
+[2025-01-15 14:30:35] ERROR: Pod/log-aggregator-8e5f7c9d2a-b6h8j - Failed to pull image: rpc error: code = DeadlineExceeded desc = context deadline exceeded {"namespace":"monitoring","container":"fluentd","image":"fluentd:v1.16-1","timeout":"5m0s","node":"worker-node-5"}
+
+[2025-01-15 14:32:08] ERROR: HorizontalPodAutoscaler/api-gateway-hpa - Failed to get CPU utilization: unable to get metrics for resource cpu {"namespace":"production","hpa":"api-gateway-hpa","target":"Deployment/api-gateway","min_replicas":2,"max_replicas":10,"metrics_server":"metrics-server.kube-system"}

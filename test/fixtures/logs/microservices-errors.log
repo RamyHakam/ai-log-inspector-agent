@@ -1,0 +1,19 @@
+[2025-01-15 14:15:23] WARN: API Gateway - Circuit breaker opened for user-service {"service":"user-service","endpoint":"/api/users","failure_count":10,"threshold":5,"timeout":"30s","trace_id":"trace_001","span_id":"span_001"}
+
+[2025-01-15 14:16:45] ERROR: Order Service - Downstream service timeout: payment-service {"service":"order-service","downstream":"payment-service","endpoint":"/api/payment/process","timeout":"10s","request_id":"order_12345","user_id":7890,"trace_id":"trace_002"}
+
+[2025-01-15 14:18:12] CRITICAL: Rate Limiter - API rate limit exceeded {"client_ip":"192.168.1.100","api_key":"api_key_abc123","endpoint":"/api/orders","rate_limit":"1000/hour","current_requests":1247,"window":"1h","trace_id":"trace_003"}
+
+[2025-01-15 14:19:34] ERROR: Service Discovery - Service registration failed: consul connection timeout {"service":"inventory-service","consul_endpoint":"http://consul.service.consul:8500","instance_id":"inventory-001","health_check":"/health","timeout":"5s","trace_id":"trace_004"}
+
+[2025-01-15 14:21:07] ERROR: Message Queue - RabbitMQ publisher confirm failed {"queue":"order.events","exchange":"orders","routing_key":"order.created","message_id":"msg_567890","error":"channel closed","cluster_node":"rabbit@node-1","trace_id":"trace_005"}
+
+[2025-01-15 14:22:29] WARN: Load Balancer - Upstream server marked unhealthy {"upstream":"notification-service","server":"10.0.1.15:8080","health_check":"GET /health","status_code":503,"response_time":"15s","consecutive_failures":3,"trace_id":"trace_006"}
+
+[2025-01-15 14:23:58] ERROR: API Gateway - JWT verification failed: invalid signature {"endpoint":"/api/profile","method":"GET","token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9...","issuer":"auth.company.com","client_ip":"10.0.2.45","trace_id":"trace_007"}
+
+[2025-01-15 14:25:16] ERROR: Distributed Tracing - Jaeger span export failed {"jaeger_endpoint":"http://jaeger-collector:14268/api/traces","span_count":15,"batch_size":"100","error":"connection refused","service":"order-service","trace_id":"trace_008"}
+
+[2025-01-15 14:26:43] CRITICAL: Saga Transaction - Compensation failed in payment rollback {"saga_id":"saga_order_001","step":"payment_rollback","service":"payment-service","order_id":"order_12345","amount":9999,"error":"refund_failed","trace_id":"trace_009"}
+
+[2025-01-15 14:28:05] ERROR: Service Mesh - Envoy proxy sidecar crashed {"pod":"catalog-service-abc123","namespace":"production","proxy_version":"1.24.1","exit_code":137,"last_config_update":"2025-01-15T14:20:00Z","trace_id":"trace_010"}

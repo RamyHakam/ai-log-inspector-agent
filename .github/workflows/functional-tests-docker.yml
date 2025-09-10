@@ -1,0 +1,62 @@
+name: Functional Tests with Ollama Docker
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  functional-tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      # Run Ollama as a service container
+      ollama:
+        image: ollama/ollama:latest
+        ports:
+          - 11434:11434
+        options: >-
+          --health-cmd "curl -f http://localhost:11434/api/version || exit 1"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.2'
+        extensions: mbstring, xml, ctype, json, tokenizer
+    
+    - name: Install Composer dependencies
+      run: composer install --prefer-dist --no-progress
+    
+    # Wait for Ollama service to be ready
+    - name: Wait for Ollama service
+      run: |
+        timeout 300 bash -c 'until curl -f http://localhost:11434/api/version; do sleep 5; done'
+    
+    # Pull model into the Ollama container
+    - name: Pull Ollama model
+      run: |
+        docker exec $(docker ps -q --filter "ancestor=ollama/ollama:latest") \
+          ollama pull llama3.2:1b  # Smallest, fastest model with tool calling for CI
+    
+    # Verify setup
+    - name: Test Ollama setup
+      run: |
+        curl -X POST http://localhost:11434/api/generate \
+          -H "Content-Type: application/json" \
+          -d '{"model": "llama3.2:1b", "prompt": "Test prompt", "stream": false}' \
+          | jq -r '.response'
+    
+    # Run functional tests
+    - name: Run Functional Tests
+      env:
+        OLLAMA_URL: http://localhost:11434
+        OLLAMA_MODEL: llama3.2:1b
+      run: vendor/bin/phpunit test/Functional/ --testdox
