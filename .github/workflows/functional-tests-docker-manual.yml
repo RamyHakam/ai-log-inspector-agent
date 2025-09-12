@@ -77,8 +77,12 @@ jobs:
     # Pull model into the Ollama container
     - name: Pull Ollama model
       run: |
-        echo "Pulling llama3.2:1b model..."
-        docker exec ollama-test ollama pull llama3.2:1b
+        echo "Pulling fastest available model..."
+        # Try the smallest/fastest models first
+        docker exec ollama-test ollama pull qwen2.5:0.5b || {
+          echo "qwen2.5:0.5b not available, trying llama3.2:1b..."
+          docker exec ollama-test ollama pull llama3.2:1b
+        }
         
         echo "Verifying model was pulled..."
         docker exec ollama-test ollama list
@@ -87,26 +91,34 @@ jobs:
     - name: Test Ollama setup
       run: |
         echo "Testing Ollama with a simple generation request..."
-        curl -X POST http://localhost:11434/api/generate \
+        # Determine which model was pulled
+        AVAILABLE_MODEL=$(docker exec ollama-test ollama list | grep -E '(qwen2.5:0.5b|llama3.2:1b)' | head -1 | awk '{print $1}' || echo "llama3.2:1b")
+        echo "Using model: $AVAILABLE_MODEL"
+        
+        timeout 120 curl -X POST http://localhost:11434/api/generate \
           -H "Content-Type: application/json" \
-          -d '{
-            "model": "llama3.2:1b", 
-            "prompt": "Hello, respond with just: Test successful", 
-            "stream": false,
-            "options": {
-              "num_predict": 10,
-              "temperature": 0.1
+          -d "{
+            \"model\": \"$AVAILABLE_MODEL\", 
+            \"prompt\": \"Test\", 
+            \"stream\": false,
+            \"options\": {
+              \"num_predict\": 5,
+              \"temperature\": 0.1
             }
-          }' | jq -r '.response // "No response received"'
+          }" | jq -r '.response // "No response received"'
     
     # Run functional tests
     - name: Run Functional Tests
+      timeout-minutes: 10
       env:
         OLLAMA_URL: http://localhost:11434
-        OLLAMA_MODEL: llama3.2:1b
+        OLLAMA_MODEL: llama3.2:1b  # Will be auto-detected in the test
       run: |
-        echo "Running functional tests..."
-        vendor/bin/phpunit test/Functional/ --testdox
+        echo "Running functional tests (max 10 minutes)..."
+        timeout 600 vendor/bin/phpunit test/Functional/ --testdox || {
+          echo "Tests timed out or failed"
+          exit 1
+        }
     
     # Cleanup
     - name: Cleanup Ollama container
