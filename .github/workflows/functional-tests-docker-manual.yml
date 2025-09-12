@@ -1,0 +1,117 @@
+name: Functional Tests with Ollama Docker (Manual)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  functional-tests:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.3'
+        extensions: mbstring, xml, ctype, json, tokenizer
+    
+    - name: Install Composer dependencies
+      run: |
+        echo "Installing Composer dependencies..."
+        composer install --prefer-dist --no-progress || {
+          echo "⚠️  Composer install failed, trying composer update..."
+          composer update --prefer-dist --no-progress
+        }
+    
+    # Start Ollama container manually
+    - name: Start Ollama container
+      run: |
+        echo "Starting Ollama container..."
+        docker run -d \
+          --name ollama-test \
+          -p 11434:11434 \
+          -e OLLAMA_HOST=0.0.0.0:11434 \
+          -e OLLAMA_CONTEXT_LENGTH=4096 \
+          -e OLLAMA_KEEP_ALIVE=5m0s \
+          ollama/ollama:latest
+        
+        echo "Waiting for container to be ready..."
+        sleep 10
+        
+        # Check container status
+        docker ps
+        docker logs ollama-test
+    
+    # Wait for Ollama service to be ready with better error handling
+    - name: Wait for Ollama service
+      run: |
+        echo "Waiting for Ollama API to be ready..."
+        for i in {1..30}; do
+          if curl -f http://localhost:11434/api/version 2>/dev/null; then
+            echo "✅ Ollama API is ready!"
+            curl -s http://localhost:11434/api/version | jq .
+            break
+          fi
+          echo "⏳ Attempt $i/30: Ollama not ready yet, waiting 10 seconds..."
+          if [ $i -eq 15 ]; then
+            echo "🔍 Mid-check: Container status and logs"
+            docker ps -a --filter name=ollama-test
+            docker logs ollama-test --tail 20
+          fi
+          sleep 10
+          if [ $i -eq 30 ]; then
+            echo "❌ ERROR: Ollama service failed to start after 5 minutes"
+            echo "Final container status:"
+            docker ps -a --filter name=ollama-test
+            echo "Final container logs:"
+            docker logs ollama-test
+            exit 1
+          fi
+        done
+    
+    # Pull model into the Ollama container
+    - name: Pull Ollama model
+      run: |
+        echo "Pulling llama3.2:1b model..."
+        docker exec ollama-test ollama pull llama3.2:1b
+        
+        echo "Verifying model was pulled..."
+        docker exec ollama-test ollama list
+    
+    # Test Ollama setup
+    - name: Test Ollama setup
+      run: |
+        echo "Testing Ollama with a simple generation request..."
+        curl -X POST http://localhost:11434/api/generate \
+          -H "Content-Type: application/json" \
+          -d '{
+            "model": "llama3.2:1b", 
+            "prompt": "Hello, respond with just: Test successful", 
+            "stream": false,
+            "options": {
+              "num_predict": 10,
+              "temperature": 0.1
+            }
+          }' | jq -r '.response // "No response received"'
+    
+    # Run functional tests
+    - name: Run Functional Tests
+      env:
+        OLLAMA_URL: http://localhost:11434
+        OLLAMA_MODEL: llama3.2:1b
+      run: |
+        echo "Running functional tests..."
+        vendor/bin/phpunit test/Functional/ --testdox
+    
+    # Cleanup
+    - name: Cleanup Ollama container
+      if: always()
+      run: |
+        echo "Cleaning up Ollama container..."
+        docker stop ollama-test || true
+        docker rm ollama-test || true
