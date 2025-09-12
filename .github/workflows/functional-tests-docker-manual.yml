@@ -1,5 +1,9 @@
 name: Functional Tests with Ollama Docker (Manual)
 
+# This workflow uses Ollama v0.11.10+ to ensure compatibility with Symfony AI Platform
+# Symfony AI Platform requires Ollama >= v0.6.4 for proper /api/show capabilities detection
+# See: https://github.com/ollama/ollama/commit/e172f095ba4af2c98d7744ce4ffcf4cd3a8e123c
+
 on:
   push:
     branches: [ main, develop ]
@@ -28,20 +32,20 @@ jobs:
           composer update --prefer-dist --no-progress
         }
     
-    # Start Ollama container manually
+    # Start Ollama container with latest version for compatibility
     - name: Start Ollama container
       run: |
-        echo "Starting Ollama container..."
+        echo "Starting Ollama container with latest version (v0.11.10) for /api/show capabilities support..."
         docker run -d \
           --name ollama-test \
           -p 11434:11434 \
           -e OLLAMA_HOST=0.0.0.0:11434 \
           -e OLLAMA_CONTEXT_LENGTH=4096 \
           -e OLLAMA_KEEP_ALIVE=5m0s \
-          ollama/ollama:latest
+          ollama/ollama:0.11.10
         
         echo "Waiting for container to be ready..."
-        sleep 10
+        sleep 15
         
         # Check container status
         docker ps
@@ -54,6 +58,8 @@ jobs:
         for i in {1..30}; do
           if curl -f http://localhost:11434/api/version 2>/dev/null; then
             echo "✅ Ollama API is ready!"
+            OLLAMA_VERSION=$(curl -s http://localhost:11434/api/version | jq -r '.version // "unknown"')
+            echo "Ollama version: $OLLAMA_VERSION"
             curl -s http://localhost:11434/api/version | jq .
             break
           fi
@@ -77,28 +83,65 @@ jobs:
     # Pull model into the Ollama container
     - name: Pull Ollama model
       run: |
-        echo "Pulling fastest available model..."
-        # Try the smallest/fastest models first
-        docker exec ollama-test ollama pull qwen2.5:0.5b || {
-          echo "qwen2.5:0.5b not available, trying llama3.2:1b..."
-          docker exec ollama-test ollama pull llama3.2:1b
-        }
+        echo "Pulling llama3.2:1b model for consistency with tests..."
+        docker exec ollama-test ollama pull llama3.2:1b
         
         echo "Verifying model was pulled..."
         docker exec ollama-test ollama list
     
+    # Verify Ollama version for compatibility
+    - name: Verify Ollama version
+      run: |
+        echo "Verifying Ollama version for Symfony AI Platform compatibility..."
+        OLLAMA_VERSION=$(curl -s http://localhost:11434/api/version | jq -r '.version // "unknown"')
+        echo "Current Ollama version: $OLLAMA_VERSION"
+        
+        # Extract version number for comparison
+        VERSION_NUM=$(echo "$OLLAMA_VERSION" | sed 's/v//' | cut -d. -f1-3)
+        echo "Version number: $VERSION_NUM"
+        
+        # Check if version is >= 0.6.4 (when capabilities were added)
+        if printf '%s\n%s\n' "0.6.4" "$VERSION_NUM" | sort -V -C; then
+          echo "✅ Ollama version $OLLAMA_VERSION supports /api/show capabilities - compatible with Symfony AI"
+        else
+          echo "❌ Ollama version $OLLAMA_VERSION may not support capabilities field"
+          echo "⚠️  Symfony AI Platform requires Ollama >= v0.6.4 for proper capabilities detection"
+        fi
+    
     # Test Ollama setup
     - name: Test Ollama setup
       run: |
-        echo "Testing Ollama with a simple generation request..."
-        # Determine which model was pulled
-        AVAILABLE_MODEL=$(docker exec ollama-test ollama list | grep -E '(qwen2.5:0.5b|llama3.2:1b)' | head -1 | awk '{print $1}' || echo "llama3.2:1b")
-        echo "Using model: $AVAILABLE_MODEL"
+        echo "Testing Ollama with llama3.2:1b model..."
         
+        # Test /api/show endpoint first (this is where the compatibility issue occurs)
+        echo "Testing /api/show endpoint for capabilities support..."
+        echo "Request: POST /api/show with body: {\"model\":\"llama3.2:1b\"}"
+        HTTP_CODE=$(curl -w "%{http_code}" -s -X POST http://localhost:11434/api/show \
+          -H "Content-Type: application/json" \
+          -d '{"model":"llama3.2:1b"}' -o /tmp/show_response.json)
+        echo "HTTP response code: $HTTP_CODE"
+        if [ "$HTTP_CODE" = "200" ]; then
+          echo "✅ /api/show successful"
+          CAPABILITIES=$(cat /tmp/show_response.json | jq -r '.capabilities // null')
+          if [ "$CAPABILITIES" != "null" ]; then
+            echo "✅ Capabilities field found: $CAPABILITIES"
+          else
+            echo "⚠️  No capabilities field - this may cause Symfony AI Platform issues"
+          fi
+          cat /tmp/show_response.json | jq '.capabilities // "No capabilities found"'
+        else
+          echo "❌ /api/show failed with HTTP $HTTP_CODE"
+          echo "Response body:"
+          cat /tmp/show_response.json
+          echo "❌ This will cause Symfony AI Platform to fail!"
+        fi
+        
+        # Test generation
+        echo "Testing generation..."
         timeout 120 curl -X POST http://localhost:11434/api/generate \
           -H "Content-Type: application/json" \
           -d "{
-            \"model\": \"$AVAILABLE_MODEL\", 
+            \"model\": \"llama3.2:1b\", 
             \"prompt\": \"Test\", 
             \"stream\": false,
             \"options\": {
