@@ -6,9 +6,11 @@ name: Functional Tests with Ollama Docker (Manual)
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
+#    branches: [ main, develop ]
+    tags:
+      - 'v*.*.*'
+#  pull_request:
+#    branches: [ main ]
 
 jobs:
   functional-tests:
