@@ -10,7 +10,8 @@
     "symfony/ai-ollama-platform": "^0.3.0",
     "symfony/ai-open-ai-platform": "^0.3.0",
     "symfony/ai-anthropic-platform": "^0.3.0",
-    "psr/log": "^3.0"
+    "psr/log": "^3.0",
+    "symfony/ai-chat": "^0.3.0"
   },
   "autoload": {
     "psr-4": {

@@ -4,13 +4,14 @@ namespace Hakam\AiLogInspector\Agent;
 
 use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Symfony\AI\Agent\Agent;
+use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Agent\Toolbox\AgentProcessor;
 use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Result\ResultInterface;
 
-final  class LogInspectorAgent
+final  class LogInspectorAgent implements AgentInterface
 {
     private Agent $agent;
 
@@ -31,13 +32,22 @@ final  class LogInspectorAgent
         $this->systemPrompt = $systemPrompt ?? self::getDefaultSystemPrompt();
     }
 
+    public function call(MessageBag $messages, array $options = []): ResultInterface
+    {
+        return $this->agent->call($messages, $options);
+    }
+
+    public function getName(): string
+    {
+        return $this->agent->getName();
+    }
+
     public function ask(string $question) : ResultInterface
     {
         $messages = new MessageBag(
             Message::forSystem($this->systemPrompt),
             Message::ofUser($question),
         );
-
         return $this->agent->call($messages);
     }
 
