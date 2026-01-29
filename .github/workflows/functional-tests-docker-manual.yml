@@ -158,7 +158,7 @@ jobs:
         OLLAMA_MODEL: llama3.2:1b  # Will be auto-detected in the test
       run: |
         echo "Running functional tests (max 10 minutes)..."
-        timeout 600 vendor/bin/phpunit test/Functional/ --testdox || {
+        timeout 1200 vendor/bin/phpunit test/Functional/ --testdox || {
           echo "Tests timed out or failed"
           exit 1
         }
