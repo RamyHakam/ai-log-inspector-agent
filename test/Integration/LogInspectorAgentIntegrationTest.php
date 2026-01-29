@@ -8,12 +8,12 @@ use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Platform\Capability;
-use Symfony\AI\Platform\InMemoryPlatform;
+use Symfony\AI\Platform\Test\InMemoryPlatform;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
 use Symfony\AI\Platform\Vector\Vector;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\Component\Uid\Uuid;
@@ -22,14 +22,14 @@ class LogInspectorAgentIntegrationTest extends TestCase
 {
     private InMemoryPlatform $symfonyPlatform;
     private LogDocumentPlatform $platform;
-    private InMemoryStore $store;
+    private Store $store;
     private LogDocumentModel $model;
     private LogInspectorAgent $agent;
 
     protected function setUp(): void
     {
         // Create real Symfony AI store
-        $this->store = new InMemoryStore();
+        $this->store = new Store();
         $this->model = new LogDocumentModel(
             'test-model',
             [Capability::TOOL_CALLING, Capability::INPUT_TEXT, Capability::OUTPUT_TEXT]
@@ -259,10 +259,10 @@ class LogInspectorAgentIntegrationTest extends TestCase
     private function createMockLogSearchTool(): object
     {
         return new #[AsTool(name: 'log_search', description: 'Search logs for analysis')] class($this->store, $this->platform) {
-            private InMemoryStore $store;
+            private Store $store;
             private LogDocumentPlatform $platform;
             
-            public function __construct(InMemoryStore $store, LogDocumentPlatform $platform)
+            public function __construct(Store $store, LogDocumentPlatform $platform)
             {
                 $this->store = $store;
                 $this->platform = $platform;

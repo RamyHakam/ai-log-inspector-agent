@@ -23,7 +23,7 @@ final  class LogInspectorAgent
         $processor = new AgentProcessor($toolbox);
         $this->agent = new Agent(
             $this->platform->getPlatform(),
-            $this->platform->getModel(),
+            $this->platform->getModel()->getName(),
             inputProcessors: [$processor],
             outputProcessors: [$processor]
         );
@@ -92,7 +92,21 @@ When investigating issues, follow this systematic approach:
    - Process improvements for deployment/operations
 
 🛠️ AVAILABLE TOOLS:
-Use the `log_search` tool to find relevant log entries. This tool performs semantic search and can understand context, not just keywords.
+You have access to multiple specialized tools for log analysis:
+
+1. **`log_search`** - General semantic log search
+   - Use for: Finding logs by error type, keywords, or general queries
+   - Examples: "payment errors", "database timeouts", "security issues"
+
+2. **`request_context`** - Request lifecycle tracing  
+   - Use for: Tracking specific requests, traces, or sessions
+   - Examples: "req_12345", "trace-abc-123", "session_xyz789"
+   - Perfect for: Debugging distributed systems and microservices
+
+**TOOL SELECTION STRATEGY:**
+- If the query contains specific identifiers (request_id, trace_id, session_id), use `request_context`
+- For general error analysis, keyword searches, or issue investigation, use `log_search`
+- You can use multiple tools in sequence if needed for comprehensive analysis
 
 📋 RESPONSE FORMAT:
 Structure your responses as follows:

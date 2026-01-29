@@ -34,7 +34,7 @@ class LogDocumentPlatform implements LogDocumentPlatformInterface
         }
         
         try {
-            $resultPromise = $this->platform->invoke($this->model->getModel(), $query, $options);
+            $resultPromise = $this->platform->invoke($this->model->getModel()->getName(), $query, $options);
             return $resultPromise->getResult();
         } catch (ClientException $e) {
             // Handle common Ollama API compatibility issues

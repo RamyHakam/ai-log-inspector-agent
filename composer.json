@@ -4,9 +4,12 @@
   "type": "library",
   "require": {
     "php": "^8.2",
-    "symfony/ai-agent": "@dev",
-    "symfony/ai-platform": "@dev",
-    "symfony/ai-store": "@dev",
+    "symfony/ai-agent": "^0.3.0",
+    "symfony/ai-platform": "^0.3.0",
+    "symfony/ai-store": "^0.3.0",
+    "symfony/ai-ollama-platform": "^0.3.0",
+    "symfony/ai-open-ai-platform": "^0.3.0",
+    "symfony/ai-anthropic-platform": "^0.3.0",
     "psr/log": "^3.0"
   },
   "autoload": {
@@ -21,6 +24,7 @@
   },
   "require-dev": {
     "symfony/test-pack": "^1.2",
-    "dg/bypass-finals": "^1.9"
+    "dg/bypass-finals": "^1.9",
+    "symfony/dotenv": "^8.0"
   }
 }

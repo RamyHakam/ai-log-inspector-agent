@@ -6,7 +6,7 @@ use Symfony\AI\Platform\Bridge\Ollama\Ollama;
 
 class LogDocumentModelFactory
 {
-    public static function create(array $modelConfig, string $provider = null): LogDocumentModel
+    public static function create(array $modelConfig, ?string $provider = null): LogDocumentModel
     {
         // For Ollama, create an Ollama-specific model
         if ($provider === 'ollama') {

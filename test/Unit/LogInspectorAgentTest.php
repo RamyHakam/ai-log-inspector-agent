@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
-use Symfony\AI\Platform\Result\ResultPromise;
+use Symfony\AI\Platform\Result\DeferredResult;
 
 class LogInspectorAgentTest extends TestCase
 {
@@ -160,7 +160,9 @@ class LogInspectorAgentTest extends TestCase
     public function testAskWithDefaultSystemPrompt(): void
     {
         $tool = new MockSearchTool();
-        $mockResult = $this->createMock(ResultPromise::class);
+        $mockResult = $this->createMock(DeferredResult::class);
+        $mockFinalResult = $this->createMock(ResultInterface::class);
+        $mockResult->method('getResult')->willReturn($mockFinalResult);
         $question = 'Analyze the recent errors';
 
         $this->mockPlatform
@@ -180,7 +182,9 @@ class LogInspectorAgentTest extends TestCase
     {
         $customPrompt = 'Custom AI Log Inspector with advanced analytics capabilities';
         $tool = new MockSearchTool();
-        $mockResult = $this->createMock(ResultPromise::class);
+        $mockResult = $this->createMock(DeferredResult::class);
+        $mockFinalResult = $this->createMock(ResultInterface::class);
+        $mockResult->method('getResult')->willReturn($mockFinalResult);
         $question = 'What happened yesterday?';
 
         $this->mockPlatform
@@ -200,7 +204,9 @@ class LogInspectorAgentTest extends TestCase
     public function testAskWithEmptyQuestion(): void
     {
         $tool = new MockSearchTool();
-        $mockResult = $this->createMock(ResultPromise::class);
+        $mockResult = $this->createMock(DeferredResult::class);
+        $mockFinalResult = $this->createMock(ResultInterface::class);
+        $mockResult->method('getResult')->willReturn($mockFinalResult);
 
         $this->mockPlatform
             ->expects($this->once())
@@ -222,7 +228,9 @@ class LogInspectorAgentTest extends TestCase
             new MockSearchTool(),
             new MockAnalyticsTool(),
         ];
-        $mockResult = $this->createMock(ResultPromise::class);
+        $mockResult = $this->createMock(DeferredResult::class);
+        $mockFinalResult = $this->createMock(ResultInterface::class);
+        $mockResult->method('getResult')->willReturn($mockFinalResult);
         $complexQuestion = 'Can you analyze the logs between 2024-01-01 and 2024-01-02 for any database connection errors and provide a summary of the root causes with recommendations?';
 
         $this->mockPlatform

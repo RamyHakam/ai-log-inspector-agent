@@ -69,17 +69,20 @@ class LogSearchTool implements LogInspectorToolInterface
 
     private function performSemanticSearch(string $query): array
     {
-
         $queryDocument = TextDocumentFactory::createFromString($query);
         $vectorDocuments = $this->vectorizer->vectorizeLogTextDocuments([$queryDocument])[0];
         $queryVector = $vectorDocuments->vector;
 
         $searchResults = $this->store->queryForVector($queryVector, ['maxItems' => self::MAX_RESULTS]);
 
+        // The store returns cosine distance (lower = more similar)
+        // Convert relevance threshold to max distance: distance <= (1 - threshold)
+        $maxDistance = 1.0 - self::RELEVANCE_THRESHOLD;
+
         $filteredResults = [];
         foreach ($searchResults as $result) {
             if ($result instanceof VectorDocument &&
-                ($result->score === null || $result->score >= self::RELEVANCE_THRESHOLD)) {
+                ($result->score === null || $result->score <= $maxDistance)) {
                 $filteredResults[] = $result;
             }
         }
@@ -212,11 +215,11 @@ class LogSearchTool implements LogInspectorToolInterface
         // This is a workaround to get all stored documents
         $neutralVector = new Vector([0.5, 0.5, 0.5, 0.5, 0.5]); // Neutral vector
         $allResults = $this->store->queryForVector($neutralVector, ['maxItems' => 1000]);
-        
+
         $matchingResults = [];
         $queryLower = strtolower(trim($query));
         $queryWords = array_filter(explode(' ', $queryLower), fn($word) => strlen($word) > 2);
-        
+
         foreach ($allResults as $result) {
             if ($result instanceof VectorDocument) {
                 $metadata = $result->metadata;
@@ -224,61 +227,61 @@ class LogSearchTool implements LogInspectorToolInterface
                 $category = strtolower($metadata['category'] ?? '');
                 $level = strtolower($metadata['level'] ?? '');
                 $tags = array_map('strtolower', $metadata['tags'] ?? []);
-                
+
                 $score = 0;
-                
+
                 // Direct query match
                 if (str_contains($content, $queryLower)) {
                     $score += 10;
                 }
-                
+
                 // Category match
                 if (str_contains($queryLower, $category) || str_contains($category, $queryLower)) {
                     $score += 8;
                 }
-                
+
                 // Level match (error, warning, etc.)
                 if (str_contains($queryLower, $level)) {
                     $score += 5;
                 }
-                
+
                 // Tag matches
                 foreach ($tags as $tag) {
                     if (str_contains($queryLower, $tag) || str_contains($tag, $queryLower)) {
                         $score += 6;
                     }
                 }
-                
+
                 // Individual word matches
                 foreach ($queryWords as $word) {
                     if (str_contains($content, $word)) {
                         $score += 2;
                     }
                 }
-                
+
                 // Semantic keyword matching
                 $semanticMatches = $this->getSemanticMatches($queryLower, $content);
                 $score += $semanticMatches * 3;
-                
+
                 // Only include results with some relevance
                 if ($score > 0) {
-                    // Add artificial score to match VectorDocument interface expectations
-                    $result->score = $score / 20.0; // Normalize to 0-1 range
-                    $matchingResults[] = $result;
+                    // Use withScore() to create new instance with score (VectorDocument has readonly properties)
+                    $normalizedScore = $score / 20.0; // Normalize to 0-1 range
+                    $matchingResults[] = $result->withScore($normalizedScore);
                 }
             }
         }
-        
+
         // Sort by relevance score (descending)
         usort($matchingResults, fn($a, $b) => ($b->score ?? 0) <=> ($a->score ?? 0));
-        
+
         // Apply relevance threshold and limit results
         $filteredResults = array_slice(
             array_filter($matchingResults, fn($result) => ($result->score ?? 0) >= 0.1),
             0,
             self::MAX_RESULTS
         );
-        
+
         return $filteredResults;
     }
 

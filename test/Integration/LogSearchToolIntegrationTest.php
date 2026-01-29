@@ -9,13 +9,13 @@ use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Capability;
-use Symfony\AI\Platform\InMemoryPlatform;
+use Symfony\AI\Platform\Test\InMemoryPlatform;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
 use Symfony\AI\Platform\Vector\Vector;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\Component\Uid\Uuid;
@@ -24,7 +24,7 @@ class LogSearchToolIntegrationTest extends TestCase
 {
     private InMemoryPlatform $symfonyPlatform;
     private LogDocumentPlatform $platform;
-    private InMemoryStore $store;
+    private Store $store;
     private LogDocumentModel $model;
     private VectorLogStoreInterface $mockStore;
     private LogDocumentVectorizerInterface $mockVectorizer;
@@ -32,7 +32,7 @@ class LogSearchToolIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->store = new InMemoryStore();
+        $this->store = new Store();
         $this->model = new LogDocumentModel('test-model', [Capability::TOOL_CALLING]);
 
         $this->symfonyPlatform = new InMemoryPlatform(
@@ -256,7 +256,7 @@ class LogSearchToolIntegrationTest extends TestCase
     private function createMockVectorizer(): LogDocumentVectorizerInterface
     {
         $mockVectorizer = $this->createMock(LogDocumentVectorizerInterface::class);
-        
+
         // Configure mock to return vector documents
         $mockVectorizer->method('vectorizeLogTextDocuments')
             ->willReturnCallback(function ($documents) {
@@ -264,33 +264,36 @@ class LogSearchToolIntegrationTest extends TestCase
                 if (empty($documents)) {
                     return [];
                 }
-                
+
                 $firstDoc = $documents[0];
-                $content = $firstDoc->content ?? '';
-                
-                // Generate different vectors based on content keywords
-                if (str_contains(strtolower($content), 'checkout') || str_contains(strtolower($content), 'payment')) {
-                    $vector = new Vector([0.8, 0.1, 0.2, 0.9, 0.3]);
-                } elseif (str_contains(strtolower($content), 'authentication') || str_contains(strtolower($content), 'login')) {
-                    $vector = new Vector([0.1, 0.9, 0.0, 0.2, 0.8]);
-                } elseif (str_contains(strtolower($content), 'memory') || str_contains(strtolower($content), 'performance')) {
+                $content = method_exists($firstDoc, 'getContent') ? $firstDoc->getContent() : '';
+
+                // Generate different vectors based on content keywords (order matters - more specific first)
+                $contentLower = strtolower($content);
+                if (str_contains($contentLower, 'memory') || str_contains($contentLower, 'exhausted')) {
                     $vector = new Vector([0.3, 0.4, 0.9, 0.0, 0.1]);
-                } elseif (str_contains(strtolower($content), 'api') || str_contains(strtolower($content), 'timeout')) {
-                    $vector = new Vector([0.6, 0.1, 0.4, 0.7, 0.5]);
-                } elseif (str_contains(strtolower($content), 'file') || str_contains(strtolower($content), 'permission')) {
+                } elseif (str_contains($contentLower, 'file') || str_contains($contentLower, 'permission')) {
                     $vector = new Vector([0.2, 0.7, 0.1, 0.4, 0.6]);
+                } elseif (str_contains($contentLower, 'checkout') || str_contains($contentLower, 'payment')) {
+                    $vector = new Vector([0.8, 0.1, 0.2, 0.9, 0.3]);
+                } elseif (str_contains($contentLower, 'authentication') || str_contains($contentLower, 'login')) {
+                    $vector = new Vector([0.1, 0.9, 0.0, 0.2, 0.8]);
+                } elseif (str_contains($contentLower, 'api') || str_contains($contentLower, 'external') || str_contains($contentLower, 'service')) {
+                    $vector = new Vector([0.6, 0.1, 0.4, 0.7, 0.5]);
+                } elseif (str_contains($contentLower, 'timeout')) {
+                    $vector = new Vector([0.6, 0.1, 0.4, 0.7, 0.5]);
                 } else {
                     $vector = new Vector([0.5, 0.5, 0.5, 0.5, 0.5]);
                 }
-                
+
                 $metadata = new Metadata([
                     'content' => $content,
                     'query_type' => 'search'
                 ]);
-                
+
                 return [new VectorDocument(Uuid::v4(), $vector, $metadata)];
             });
-        
+
         return $mockVectorizer;
     }
 
