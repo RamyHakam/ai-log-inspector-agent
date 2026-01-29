@@ -3,7 +3,7 @@
   "description": "AI-powered log inspector agent for PHP",
   "type": "library",
   "require": {
-    "php": "^8.2",
+    "php": "^8.4",
     "symfony/ai-agent": "^0.3.0",
     "symfony/ai-platform": "^0.3.0",
     "symfony/ai-store": "^0.3.0",
