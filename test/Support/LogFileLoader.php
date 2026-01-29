@@ -2,7 +2,7 @@
 
 namespace Hakam\AiLogInspector\Test\Support;
 
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\AI\Platform\Vector\Vector;
@@ -29,7 +29,7 @@ class LogFileLoader
         'performance-errors.log' => 'performance',
     ];
 
-    public function loadLogsIntoStore(InMemoryStore $store, ?array $categories = null): array
+    public function loadLogsIntoStore(Store $store, ?array $categories = null): array
     {
         $loadedLogs = [];
         $fixturesPath = __DIR__ . '/../fixtures/logs/';

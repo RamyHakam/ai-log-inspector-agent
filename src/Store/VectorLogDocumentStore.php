@@ -39,7 +39,7 @@ final class VectorLogDocumentStore implements VectorLogStoreInterface
         return $this->aiStore;
     }
 
-    public function queryForVector(Vector $query, array $options = []): array
+    public function queryForVector(Vector $query, array $options = []): iterable
     {
         return $this->aiStore->query($query, $options);
     }

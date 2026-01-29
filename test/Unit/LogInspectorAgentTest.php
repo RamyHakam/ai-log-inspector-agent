@@ -11,7 +11,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
-use Symfony\AI\Platform\Result\ResultPromise;
+use Symfony\AI\Platform\Result\DeferredResult;
 
 class LogInspectorAgentTest extends TestCase
 {
@@ -92,10 +92,77 @@ class LogInspectorAgentTest extends TestCase
         $this->assertInstanceOf(LogInspectorAgent::class, $agent);
     }
 
+    public function testGetDefaultSystemPrompt(): void
+    {
+        $defaultPrompt = LogInspectorAgent::getDefaultSystemPrompt();
+        
+        // Test that the default prompt contains key components
+        $this->assertNotEmpty($defaultPrompt);
+        $this->assertStringContainsString('AI Log Inspector', $defaultPrompt);
+        $this->assertStringContainsString('CORE PRINCIPLES', $defaultPrompt);
+        $this->assertStringContainsString('ANALYSIS METHODOLOGY', $defaultPrompt);
+        $this->assertStringContainsString('root causes', $defaultPrompt);
+        $this->assertStringContainsString('log_search', $defaultPrompt);
+        $this->assertStringContainsString('Evidence', $defaultPrompt);
+        $this->assertStringContainsString('Database Issues', $defaultPrompt);
+        $this->assertStringContainsString('Payment Failures', $defaultPrompt);
+        $this->assertStringContainsString('Security Incidents', $defaultPrompt);
+        
+        // Ensure it's comprehensive (should be substantial)
+        $this->assertGreaterThan(2000, strlen($defaultPrompt), 'Default prompt should be comprehensive');
+    }
+
+    public function testDefaultSystemPromptUsedWhenNoneProvided(): void
+    {
+        $tool = new MockSearchTool();
+        $agent = new LogInspectorAgent(
+            $this->platform,
+            [$tool]
+            // No custom prompt provided
+        );
+        
+        $this->assertInstanceOf(LogInspectorAgent::class, $agent);
+        
+        // The default prompt should be used internally
+        // We can't directly test the internal prompt, but we can ensure
+        // the agent was constructed successfully with the default prompt
+    }
+
+    public function testDefaultPromptContentQuality(): void
+    {
+        $defaultPrompt = LogInspectorAgent::getDefaultSystemPrompt();
+        
+        // Test for professional language and structure
+        $this->assertStringContainsString('🎯', $defaultPrompt, 'Should have visual organization');
+        $this->assertStringContainsString('**Summary**', $defaultPrompt, 'Should define response structure');
+        $this->assertStringContainsString('**Root Cause**', $defaultPrompt, 'Should emphasize root cause analysis');
+        $this->assertStringContainsString('**Timeline**', $defaultPrompt, 'Should include timeline analysis');
+        $this->assertStringContainsString('**Evidence**', $defaultPrompt, 'Should require evidence citation');
+        $this->assertStringContainsString('**Immediate Actions**', $defaultPrompt, 'Should provide actionable steps');
+        $this->assertStringContainsString('**Prevention**', $defaultPrompt, 'Should suggest prevention measures');
+        $this->assertStringContainsString('**Confidence**', $defaultPrompt, 'Should include confidence assessment');
+        
+        // Test for technical scenarios coverage
+        $this->assertStringContainsString('Database', $defaultPrompt);
+        $this->assertStringContainsString('Payment', $defaultPrompt);
+        $this->assertStringContainsString('Performance', $defaultPrompt);
+        $this->assertStringContainsString('Security', $defaultPrompt);
+        $this->assertStringContainsString('PHP', $defaultPrompt);
+        $this->assertStringContainsString('microservices', $defaultPrompt);
+        
+        // Test for important analysis concepts
+        $this->assertStringContainsString('log IDs', $defaultPrompt);
+        $this->assertStringContainsString('Never invent', $defaultPrompt);
+        $this->assertStringContainsString('actionable insights', $defaultPrompt);
+        $this->assertStringContainsString('confidence level', $defaultPrompt);
+    }
+
     public function testAskWithDefaultSystemPrompt(): void
     {
         $tool = new MockSearchTool();
-        $mockResult = $this->createMock(ResultPromise::class);
+        $mockResult = $this->createMock(DeferredResult::class);
+        $mockFinalResult = $this->createMock(ResultInterface::class);
+        $mockResult->method('getResult')->willReturn($mockFinalResult);
         $question = 'Analyze the recent errors';
 
         $this->mockPlatform
@@ -115,7 +182,9 @@ class LogInspectorAgentTest extends TestCase
     {
         $customPrompt = 'Custom AI Log Inspector with advanced analytics capabilities';
         $tool = new MockSearchTool();
-        $mockResult = $this->createMock(ResultPromise::class);
+        $mockResult = $this->createMock(DeferredResult::class);
+        $mockFinalResult = $this->createMock(ResultInterface::class);
+        $mockResult->method('getResult')->willReturn($mockFinalResult);
         $question = 'What happened yesterday?';
 
         $this->mockPlatform
@@ -135,7 +204,9 @@ class LogInspectorAgentTest extends TestCase
     public function testAskWithEmptyQuestion(): void
     {
         $tool = new MockSearchTool();
-        $mockResult = $this->createMock(ResultPromise::class);
+        $mockResult = $this->createMock(DeferredResult::class);
+        $mockFinalResult = $this->createMock(ResultInterface::class);
+        $mockResult->method('getResult')->willReturn($mockFinalResult);
 
         $this->mockPlatform
             ->expects($this->once())
@@ -157,7 +228,9 @@ class LogInspectorAgentTest extends TestCase
             new MockSearchTool(),
             new MockAnalyticsTool(),
         ];
-        $mockResult = $this->createMock(ResultPromise::class);
+        $mockResult = $this->createMock(DeferredResult::class);
+        $mockFinalResult = $this->createMock(ResultInterface::class);
+        $mockResult->method('getResult')->willReturn($mockFinalResult);
         $complexQuestion = 'Can you analyze the logs between 2024-01-01 and 2024-01-02 for any database connection errors and provide a summary of the root causes with recommendations?';
 
         $this->mockPlatform

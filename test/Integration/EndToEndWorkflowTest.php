@@ -9,9 +9,9 @@ use Hakam\AiLogInspector\Tool\LogSearchTool;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Platform\Capability;
-use Symfony\AI\Platform\InMemoryPlatform;
+use Symfony\AI\Platform\Test\InMemoryPlatform;
 use Symfony\AI\Platform\Model;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\AI\Platform\Vector\Vector;
@@ -24,13 +24,13 @@ class EndToEndWorkflowTest extends TestCase
 {
     private InMemoryPlatform $symnfonyPlatform;
     private LogDocumentPlatform $platform;
-    private InMemoryStore $store;
+    private Store $store;
     private LogDocumentModel $model;
     private LogInspectorAgent $agent;
 
     protected function setUp(): void
     {
-        $this->store = new InMemoryStore();
+        $this->store = new Store();
         $this->model = new LogDocumentModel('production-log-analyzer', [Capability::TOOL_CALLING]);
         
         $this->setupProductionLikeLogData();

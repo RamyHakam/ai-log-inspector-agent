@@ -18,8 +18,8 @@ class LogProcessorServiceTest extends TestCase
             ->method('indexAndSaveLogs')
             ->with($this->callback(function (array $textDocs) {
                 $this->assertCount(2, $textDocs);
-                $this->assertSame('Log Message: Test message 1 | Severity Level: INFO | Timestamp: 2025-08-20 11:46:32 UTC | Day: Wednesday | Hour: 11:46 | Log Channel: app', $textDocs[0]->content);
-                $this->assertSame('Log Message: Test message 2 | Severity Level: ERROR | Timestamp: 2025-08-20 11:46:32 UTC | Day: Wednesday | Hour: 11:46 | Log Channel: app', $textDocs[1]->content);
+                $this->assertSame('Log Message: Test message 1 | Severity Level: INFO | Timestamp: 2025-08-20 11:46:32 UTC | Day: Wednesday | Hour: 11:46 | Log Channel: app', $textDocs[0]->getContent());
+                $this->assertSame('Log Message: Test message 2 | Severity Level: ERROR | Timestamp: 2025-08-20 11:46:32 UTC | Day: Wednesday | Hour: 11:46 | Log Channel: app', $textDocs[1]->getContent());
                 return true;
             }));
 

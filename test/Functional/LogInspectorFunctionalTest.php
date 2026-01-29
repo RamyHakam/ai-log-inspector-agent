@@ -9,7 +9,7 @@ use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
 use Hakam\AiLogInspector\Test\Support\LogFileLoader;
 use PHPUnit\Framework\TestCase;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store;
 use Symfony\AI\Platform\Vector\Vector;
 
 /**
@@ -30,7 +30,7 @@ class LogInspectorFunctionalTest extends TestCase
         }
 
         // Initialize components using production classes
-        $inMemoryStore = new InMemoryStore();
+        $inMemoryStore = new Store();
         $this->store = new VectorLogDocumentStore($inMemoryStore);
         $this->logLoader = new LogFileLoader();
 
@@ -56,10 +56,10 @@ class LogInspectorFunctionalTest extends TestCase
             ]
         ]);
 
-        // Create vectorizer for the LogSearchTool
+        // Create vectorizer for the LogSearchTool (model name as string per new API)
         $vectorizer = new LogDocumentVectorizer(
             $platform->getPlatform(),
-            $platform->getModel()
+            $platform->getModel()->getName()
         );
 
         // Create production LogSearchTool

@@ -96,7 +96,7 @@ class LogSearchToolTest extends TestCase
             Uuid::v4(),
             $vector,
             $metadata,
-            0.85
+            0.1
         );
 
         $this->store
@@ -153,7 +153,7 @@ class LogSearchToolTest extends TestCase
             Uuid::v4(),
             $vector,
             $metadata,
-            0.9
+            0.1
         );
 
         $this->store
@@ -223,7 +223,7 @@ class LogSearchToolTest extends TestCase
             Uuid::v4(),
             $vector,
             $metadata,
-            0.5 // Below threshold of 0.7
+            0.5 // High distance = low relevance (exceeds max distance threshold of 0.3)
         );
 
         $this->store
@@ -284,7 +284,7 @@ class LogSearchToolTest extends TestCase
                 Uuid::v4(),
                 $vector,
                 $metadata,
-                0.8 + ($i * 0.05)
+                0.1 + ($i * 0.01)
             );
         }
 
@@ -342,7 +342,7 @@ class LogSearchToolTest extends TestCase
             $uuid,
             $vector,
             new Metadata([]), // Empty metadata
-            0.8
+            0.1
         );
 
         $this->store
@@ -467,7 +467,7 @@ class LogSearchToolTest extends TestCase
                 Uuid::v4(),
                 $vector,
                 $metadata,
-                0.8
+                0.1
             );
 
             $this->store

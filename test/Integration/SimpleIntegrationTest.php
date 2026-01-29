@@ -11,12 +11,12 @@ use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Platform\Capability;
-use Symfony\AI\Platform\InMemoryPlatform;
+use Symfony\AI\Platform\Test\InMemoryPlatform;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
 use Symfony\AI\Platform\Vector\Vector;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\Component\Uid\Uuid;
@@ -28,14 +28,14 @@ class SimpleIntegrationTest extends TestCase
 {
     private InMemoryPlatform $symfonyPlatform;
     private LogDocumentPlatform $platform;
-    private InMemoryStore $store;
+    private Store $store;
     private LogDocumentModel $model;
     private LogInspectorAgent $agent;
     private object $tool; // Using object type for flexibility with mock tools
 
     protected function setUp(): void
     {
-        $this->store = new InMemoryStore();
+        $this->store = new Store();
         
         // Create model with tool calling capability
         $this->model = new LogDocumentModel(
@@ -194,10 +194,10 @@ class SimpleIntegrationTest extends TestCase
     private function createMockLogSearchTool(): object
     {
         return new #[AsTool(name: 'log_search', description: 'Search logs for simple testing')] class($this->store, $this->platform) {
-            private InMemoryStore $store;
+            private Store $store;
             private LogDocumentPlatform $platform;
             
-            public function __construct(InMemoryStore $store, LogDocumentPlatform $platform)
+            public function __construct(Store $store, LogDocumentPlatform $platform)
             {
                 $this->store = $store;
                 $this->platform = $platform;
@@ -275,10 +275,10 @@ class SimpleIntegrationTest extends TestCase
     {
         // Create a simplified tool that directly uses the store and platform for testing
         return new class($this->store, $this->platform) {
-            private InMemoryStore $store;
+            private Store $store;
             private LogDocumentPlatform $platform;
             
-            public function __construct(InMemoryStore $store, LogDocumentPlatform $platform)
+            public function __construct(Store $store, LogDocumentPlatform $platform)
             {
                 $this->store = $store;
                 $this->platform = $platform;
@@ -522,8 +522,9 @@ class SimpleIntegrationTest extends TestCase
     public function testStoreAndPlatformIntegration(): void
     {
         // Test that the store and platform work together correctly
-        $this->assertGreaterThan(0, count($this->store->query(new Vector([0.5, 0.5, 0.5, 0.5, 0.5]))));
-        
+        $results = iterator_to_array($this->store->query(new Vector([0.5, 0.5, 0.5, 0.5, 0.5])));
+        $this->assertGreaterThan(0, count($results));
+
         $platformResult = $this->platform->__invoke('test query');
         $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $platformResult);
     }
