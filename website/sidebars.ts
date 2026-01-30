@@ -50,6 +50,16 @@ const sidebars: SidebarsConfig = {
       collapsed: true,
       items: [
         'tools/log-search-tool',
+        'tools/request-context-tool',
+      ],
+    },
+    {
+      type: 'category',
+      label: '💡 Examples',
+      collapsed: true,
+      items: [
+        'examples/basic-usage',
+        'examples/multi-tool-usage',
       ],
     },
   ],
