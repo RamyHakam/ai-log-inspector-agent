@@ -2,6 +2,15 @@
   "name": "hakam/ai-log-inspector-agent",
   "description": "AI-powered log inspector agent for PHP",
   "type": "library",
+  "license": "MIT",
+  "keywords": ["ai", "log", "inspector", "agent", "symfony", "llm", "semantic-search"],
+  "authors": [
+    {
+      "name": "Ramy Hakam",
+      "email": "ramyhakam1@gmail.com"
+    }
+  ],
+  "homepage": "https://github.com/RamyHakam/ai-log-inspector-agent",
   "require": {
     "php": "^8.4",
     "symfony/ai-agent": "^0.3.0",
