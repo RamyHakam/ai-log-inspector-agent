@@ -1,0 +1,17 @@
+# Exclude from export (composer install)
+/.github            export-ignore
+/docs               export-ignore
+/examples           export-ignore
+/test               export-ignore
+/website            export-ignore
+/dev-tools          export-ignore
+
+# Development files
+/.php-cs-fixer.php  export-ignore
+/phpunit.xml.dist   export-ignore
+/.gitattributes     export-ignore
+/.gitignore         export-ignore
+
+# Other files
+/FEATURES.md        export-ignore
+/*.sh               export-ignore

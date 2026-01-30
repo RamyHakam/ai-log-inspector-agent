@@ -1,8 +1,9 @@
 /vendor/
 /.claude/
 .idea/
-/CLAUDE.md
 /.phpunit.result.cache
-
 /dev-tools/vendor/
-/WARP.md
+
+# Documentation files (keep only README.md)
+/*.md
+!README.md
