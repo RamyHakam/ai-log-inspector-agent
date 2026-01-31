@@ -154,14 +154,15 @@ jobs:
     
     # Run functional tests
     - name: Run Functional Tests
-      timeout-minutes: 10
+      timeout-minutes: 20
       env:
         OLLAMA_URL: http://localhost:11434
         OLLAMA_MODEL: llama3.2:1b  # Will be auto-detected in the test
+        INTEGRATION_TESTS: 1
       run: |
-        echo "Running functional tests (max 10 minutes)..."
-        timeout 1200 vendor/bin/phpunit test/Functional/ --testdox || {
-          echo "Tests timed out or failed"
+        echo "Running functional tests (max 20 minutes)..."
+        vendor/bin/phpunit test/Functional/ --testdox --stop-on-failure || {
+          echo "Tests failed or timed out"
           exit 1
         }
     

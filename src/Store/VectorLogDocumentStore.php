@@ -6,10 +6,10 @@ use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\AI\Store\StoreInterface;
 
-final class VectorLogDocumentStore implements VectorLogStoreInterface
+final readonly class VectorLogDocumentStore implements VectorLogStoreInterface
 {
     public function __construct(
-        private readonly StoreInterface $aiStore
+        private StoreInterface $aiStore
     )
     {
     }
