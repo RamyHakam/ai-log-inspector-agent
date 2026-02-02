@@ -75,80 +75,38 @@ $result = $agent->ask('What happened to trace trace_abc123?');
 
 ### Step 1: Index Logs with Request IDs
 
-```php
-use Hakam\AiLogInspector\Document\TextDocumentFactory;
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+The recommended approach is to use the loader-based indexer with log files:
 
+```php
+use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
+
+// Create a loader pointing to your logs directory
+$loader = new CachedLogsDocumentLoader('/var/log/services');
+
+// Create the indexer
 $indexer = new VectorLogDocumentIndexer(
-    $platform->getPlatform(),
-    $platform->getModel()->getName(),
-    $store
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    loader: $loader,
+    logStore: $store,
+    chunkSize: 500,
+    chunkOverlap: 100
 );
 
-$logs = [
-    // Successful request req_001
-    [
-        'content' => '[2024-01-30 14:00:00] INFO: API Gateway - Incoming checkout request',
-        'metadata' => [
-            'log_id' => 'api_001',
-            'timestamp' => '2024-01-30T14:00:00Z',
-            'level' => 'info',
-            'source' => 'api-gateway',
-            'request_id' => 'req_001',
-        ]
-    ],
-    [
-        'content' => '[2024-01-30 14:00:01] INFO: Payment successful for $299.99',
-        'metadata' => [
-            'log_id' => 'payment_001',
-            'timestamp' => '2024-01-30T14:00:01Z',
-            'level' => 'info',
-            'source' => 'payment-service',
-            'request_id' => 'req_001',
-        ]
-    ],
-    
-    // Failed request req_002
-    [
-        'content' => '[2024-01-30 14:05:00] INFO: API Gateway - Incoming checkout request',
-        'metadata' => [
-            'log_id' => 'api_002',
-            'timestamp' => '2024-01-30T14:05:00Z',
-            'level' => 'info',
-            'source' => 'api-gateway',
-            'request_id' => 'req_002',
-        ]
-    ],
-    [
-        'content' => '[2024-01-30 14:05:02] ERROR: Payment gateway timeout',
-        'metadata' => [
-            'log_id' => 'payment_002',
-            'timestamp' => '2024-01-30T14:05:02Z',
-            'level' => 'error',
-            'source' => 'payment-service',
-            'request_id' => 'req_002',
-        ]
-    ],
-    [
-        'content' => '[2024-01-30 14:05:03] ERROR: Stripe API timeout after 2 seconds',
-        'metadata' => [
-            'log_id' => 'payment_003',
-            'timestamp' => '2024-01-30T14:05:03Z',
-            'level' => 'error',
-            'source' => 'payment-service',
-            'request_id' => 'req_002',
-        ]
-    ],
-];
+// Index logs from multiple services
+// Assuming log files contain entries like:
+// [2024-01-30 14:00:00] req_001 INFO: API Gateway - Incoming checkout request
+// [2024-01-30 14:00:01] req_001 INFO: Payment successful for $299.99
+// [2024-01-30 14:05:00] req_002 INFO: API Gateway - Incoming checkout request
+// [2024-01-30 14:05:02] req_002 ERROR: Payment gateway timeout
+// [2024-01-30 14:05:03] req_002 ERROR: Stripe API timeout after 2 seconds
 
-// Index all logs
-foreach ($logs as $logData) {
-    $doc = TextDocumentFactory::createFromString(
-        content: $logData['content'],
-        metadata: $logData['metadata']
-    );
-    $indexer->indexAndSaveLogs([$doc]);
-}
+// Index all .log files in the directory
+$indexer->indexAllLogs();
+
+// Or index specific service logs
+$indexer->indexLogFiles(['api-gateway.log', 'payment-service.log']);
 ```
 
 ### Step 2: General Investigation (LogSearchTool)
