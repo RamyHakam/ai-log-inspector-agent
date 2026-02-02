@@ -16,7 +16,7 @@ use Hakam\AiLogInspector\Platform\LogDocumentPlatformFactory;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 use Symfony\AI\Store\InMemory\Store as InMemoryStore;
 
@@ -41,7 +41,7 @@ $agent = new LogInspectorAgent($platform, [$tool]);
 // 4. Create a loader and indexer for your log files
 $loader = new CachedLogsDocumentLoader('/var/log/app');
 
-$indexer = new VectorLogDocumentIndexer(
+$indexer = new LogFileIndexer(
     embeddingPlatform: $platform->getPlatform(),
     model: 'text-embedding-3-small',
     loader: $loader,
@@ -77,7 +77,7 @@ The recommended approach is to use the loader-based indexer:
 ```php
 <?php
 
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 
@@ -85,7 +85,7 @@ use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 $loader = new CachedLogsDocumentLoader('/var/log/app');
 
 // Create the indexer
-$indexer = new VectorLogDocumentIndexer(
+$indexer = new LogFileIndexer(
     embeddingPlatform: $platform->getPlatform(),
     model: 'text-embedding-3-small',
     loader: $loader,
@@ -195,12 +195,12 @@ $result = $agent->ask('Show failed email deliveries');
 Index logs from different services using multiple loaders:
 
 ```php
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 
 // Index logs from API Gateway service
 $apiGatewayLoader = new CachedLogsDocumentLoader('/var/log/api-gateway');
-$apiGatewayIndexer = new VectorLogDocumentIndexer(
+$apiGatewayIndexer = new LogFileIndexer(
     embeddingPlatform: $platform->getPlatform(),
     model: 'text-embedding-3-small',
     loader: $apiGatewayLoader,
@@ -210,7 +210,7 @@ $apiGatewayIndexer->indexAllLogs();
 
 // Index logs from Auth Service
 $authServiceLoader = new CachedLogsDocumentLoader('/var/log/auth-service');
-$authServiceIndexer = new VectorLogDocumentIndexer(
+$authServiceIndexer = new LogFileIndexer(
     embeddingPlatform: $platform->getPlatform(),
     model: 'text-embedding-3-small',
     loader: $authServiceLoader,
@@ -260,14 +260,14 @@ $platform = LogDocumentPlatformFactory::create([
 The indexer handles batch processing automatically with configurable chunk sizes:
 
 ```php
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 
 // Create loader for your logs directory
 $loader = new CachedLogsDocumentLoader('/var/log/app');
 
 // Create indexer with custom chunk settings
-$indexer = new VectorLogDocumentIndexer(
+$indexer = new LogFileIndexer(
     embeddingPlatform: $platform->getPlatform(),
     model: 'text-embedding-3-small',
     loader: $loader,
@@ -336,12 +336,12 @@ if (str_contains($content, 'No relevant logs')) {
 For real-time monitoring, periodically re-index the log file:
 
 ```php
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 
 // Create loader and indexer
 $loader = new CachedLogsDocumentLoader('/var/log/app');
-$indexer = new VectorLogDocumentIndexer(
+$indexer = new LogFileIndexer(
     embeddingPlatform: $platform->getPlatform(),
     model: 'text-embedding-3-small',
     loader: $loader,

@@ -34,7 +34,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
 use Hakam\AiLogInspector\Agent\LogInspectorAgentFactory;
-use Hakam\AiLogInspector\Document\TextDocumentFactory;
+use Hakam\AiLogInspector\Document\LogDocumentFactory;
 use Symfony\Component\Uid\Uuid;
 
 // 1. Create the agent using the factory
@@ -53,7 +53,7 @@ $logs = [
 
 // 3. Index the logs
 foreach ($logs as $i => $log) {
-    $doc = TextDocumentFactory::createFromString(
+    $doc = LogDocumentFactory::createFromString(
         content: $log,
         metadata: [
             'log_id' => 'log_' . str_pad((string)$i, 3, '0', STR_PAD_LEFT),
@@ -145,7 +145,7 @@ echo $summary->getContent() . "\n";
 require_once __DIR__ . '/vendor/autoload.php';
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgentFactory;
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use Symfony\AI\Platform\Bridge\OpenAI\PlatformFactory;
@@ -158,7 +158,7 @@ $store = new VectorLogDocumentStore();
 $loader = new CachedLogsDocumentLoader('/var/log/app');
 
 // Create indexer with the loader
-$indexer = new VectorLogDocumentIndexer(
+$indexer = new LogFileIndexer(
     embeddingPlatform: $platform,
     model: 'text-embedding-3-small',
     loader: $loader,

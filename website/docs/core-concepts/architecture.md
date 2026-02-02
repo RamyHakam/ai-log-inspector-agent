@@ -177,7 +177,7 @@ $results = $store->queryForVector($queryVector, ['maxItems' => 10]);
 The `VectorLogDocumentIndexer` provides a complete pipeline for loading, transforming, vectorizing, and storing log documents.
 
 ```php
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 
@@ -185,7 +185,7 @@ use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 $loader = new CachedLogsDocumentLoader('/var/log/app');
 
 // Create the indexer
-$indexer = new VectorLogDocumentIndexer(
+$indexer = new LogFileIndexer(
     embeddingPlatform: $platform,
     model: 'text-embedding-3-small',
     loader: $loader,

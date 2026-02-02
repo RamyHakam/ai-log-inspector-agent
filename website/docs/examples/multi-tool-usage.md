@@ -78,14 +78,14 @@ $result = $agent->ask('What happened to trace trace_abc123?');
 The recommended approach is to use the loader-based indexer with log files:
 
 ```php
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 
 // Create a loader pointing to your logs directory
 $loader = new CachedLogsDocumentLoader('/var/log/services');
 
 // Create the indexer
-$indexer = new VectorLogDocumentIndexer(
+$indexer = new LogFileIndexer(
     embeddingPlatform: $platform->getPlatform(),
     model: 'text-embedding-3-small',
     loader: $loader,

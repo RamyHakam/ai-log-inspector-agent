@@ -2,8 +2,8 @@
 
 namespace Hakam\AiLogInspector\Test\Unit\Indexer;
 
-use Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer;
-use Hakam\AiLogInspector\Indexer\VectorLogIndexerInterface;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
+use Hakam\AiLogInspector\Indexer\LogIndexerInterface;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
@@ -29,19 +29,19 @@ class VectorLogDocumentIndexerTest extends TestCase
 
     public function testConstructorWithValidParameters(): void
     {
-        $indexer = new VectorLogDocumentIndexer(
+        $indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
             loader: $this->loader,
             logStore: $this->store
         );
 
-        $this->assertInstanceOf(VectorLogDocumentIndexer::class, $indexer);
+        $this->assertInstanceOf(LogFileIndexer::class, $indexer);
     }
 
     public function testConstructorWithCustomChunkSettings(): void
     {
-        $indexer = new VectorLogDocumentIndexer(
+        $indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
             loader: $this->loader,
@@ -50,23 +50,23 @@ class VectorLogDocumentIndexerTest extends TestCase
             chunkOverlap: 200
         );
 
-        $this->assertInstanceOf(VectorLogDocumentIndexer::class, $indexer);
+        $this->assertInstanceOf(LogFileIndexer::class, $indexer);
     }
 
     public function testConstructorUsesDefaultStore(): void
     {
-        $indexer = new VectorLogDocumentIndexer(
+        $indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
             loader: $this->loader
         );
 
-        $this->assertInstanceOf(VectorLogDocumentIndexer::class, $indexer);
+        $this->assertInstanceOf(LogFileIndexer::class, $indexer);
     }
 
     public function testCheckForEmbeddingSupportReturnsTrue(): void
     {
-        $indexer = new VectorLogDocumentIndexer(
+        $indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
             loader: $this->loader,
@@ -87,7 +87,7 @@ class VectorLogDocumentIndexerTest extends TestCase
         ];
 
         foreach ($models as $model) {
-            $indexer = new VectorLogDocumentIndexer(
+            $indexer = new LogFileIndexer(
                 embeddingPlatform: $this->platform,
                 model: $model,
                 loader: $this->loader,
@@ -95,7 +95,7 @@ class VectorLogDocumentIndexerTest extends TestCase
             );
 
             $this->assertInstanceOf(
-                VectorLogDocumentIndexer::class,
+                LogFileIndexer::class,
                 $indexer,
                 "Should accept model: $model"
             );
@@ -104,7 +104,7 @@ class VectorLogDocumentIndexerTest extends TestCase
 
     public function testHasIndexLogFileMethod(): void
     {
-        $indexer = new VectorLogDocumentIndexer(
+        $indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
             loader: $this->loader,
@@ -113,13 +113,13 @@ class VectorLogDocumentIndexerTest extends TestCase
 
         $this->assertTrue(
             method_exists($indexer, 'indexLogFile'),
-            'VectorLogDocumentIndexer should have indexLogFile method'
+            'LogFileIndexer should have indexLogFile method'
         );
     }
 
     public function testHasIndexLogFilesMethod(): void
     {
-        $indexer = new VectorLogDocumentIndexer(
+        $indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
             loader: $this->loader,
@@ -128,13 +128,13 @@ class VectorLogDocumentIndexerTest extends TestCase
 
         $this->assertTrue(
             method_exists($indexer, 'indexLogFiles'),
-            'VectorLogDocumentIndexer should have indexLogFiles method'
+            'LogFileIndexer should have indexLogFiles method'
         );
     }
 
     public function testHasIndexAllLogsMethod(): void
     {
-        $indexer = new VectorLogDocumentIndexer(
+        $indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
             loader: $this->loader,
@@ -143,13 +143,13 @@ class VectorLogDocumentIndexerTest extends TestCase
 
         $this->assertTrue(
             method_exists($indexer, 'indexAllLogs'),
-            'VectorLogDocumentIndexer should have indexAllLogs method'
+            'LogFileIndexer should have indexAllLogs method'
         );
     }
 
     public function testConstructorWithZeroChunkOverlap(): void
     {
-        $indexer = new VectorLogDocumentIndexer(
+        $indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
             loader: $this->loader,
@@ -158,12 +158,12 @@ class VectorLogDocumentIndexerTest extends TestCase
             chunkOverlap: 0
         );
 
-        $this->assertInstanceOf(VectorLogDocumentIndexer::class, $indexer);
+        $this->assertInstanceOf(LogFileIndexer::class, $indexer);
     }
 
     public function testConstructorWithLargeChunkSize(): void
     {
-        $indexer = new VectorLogDocumentIndexer(
+        $indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
             loader: $this->loader,
@@ -172,7 +172,7 @@ class VectorLogDocumentIndexerTest extends TestCase
             chunkOverlap: 500
         );
 
-        $this->assertInstanceOf(VectorLogDocumentIndexer::class, $indexer);
+        $this->assertInstanceOf(LogFileIndexer::class, $indexer);
     }
 
     /**

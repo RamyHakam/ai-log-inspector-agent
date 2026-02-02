@@ -169,9 +169,9 @@ $timeline = [
 When indexing logs, ensure request IDs are included in metadata:
 
 ```php
-use Hakam\AiLogInspector\Document\TextDocumentFactory;
+use Hakam\AiLogInspector\Document\LogDocumentFactory;
 
-$doc = TextDocumentFactory::createFromString(
+$doc = LogDocumentFactory::createFromString(
     content: '[2024-01-30] ERROR: Payment failed',
     metadata: [
         'log_id' => 'payment_001',

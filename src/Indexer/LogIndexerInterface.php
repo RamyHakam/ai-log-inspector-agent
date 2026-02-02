@@ -2,7 +2,6 @@
 
 namespace Hakam\AiLogInspector\Indexer;
 
-
-interface VectorLogIndexerInterface
+interface LogIndexerInterface
 {
 }
