@@ -1,0 +1,15 @@
+{
+    "name": "djet-io/dev-tools",
+    "description": "Dev tools for Djet php",
+    "authors": [
+        {
+            "name": "Ramy Hakam",
+            "email": "pencilsoft1@gmail.com"
+        }
+    ],
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.77",
+        "phpstan/phpstan": "^2.1",
+        "rector/rector": "^2.1"
+    }
+}

@@ -1,0 +1,14 @@
+includes:
+  - vendor/phpstan/phpstan/conf/bleedingEdge.neon
+
+parameters:
+  level: max
+
+  paths:
+    - ../src
+
+  scanFiles:
+    - ../vendor/autoload.php
+
+  ignoreErrors:
+    - '#Call to an undefined method#'
