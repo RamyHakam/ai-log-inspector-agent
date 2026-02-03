@@ -4,20 +4,20 @@ namespace Hakam\AiLogInspector\Test\Integration;
 
 use Hakam\AiLogInspector\Model\LogDocumentModel;
 use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
+use Hakam\AiLogInspector\Retriever\LogRetrieverInterface;
 use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
-use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Capability;
-use Symfony\AI\Platform\Test\InMemoryPlatform;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
+use Symfony\AI\Platform\Test\InMemoryPlatform;
 use Symfony\AI\Platform\Vector\Vector;
-use Symfony\AI\Store\InMemory\Store;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
+use Symfony\AI\Store\InMemory\Store;
 use Symfony\Component\Uid\Uuid;
 
 class LogSearchToolIntegrationTest extends TestCase
@@ -27,7 +27,7 @@ class LogSearchToolIntegrationTest extends TestCase
     private Store $store;
     private LogDocumentModel $model;
     private VectorLogStoreInterface $mockStore;
-    private LogDocumentVectorizerInterface $mockVectorizer;
+    private LogRetrieverInterface $mockRetriever;
     private LogSearchTool $tool;
 
     protected function setUp(): void
@@ -47,11 +47,11 @@ class LogSearchToolIntegrationTest extends TestCase
 
         // Create mock interfaces for LogSearchTool
         $this->mockStore = $this->createMockVectorLogStore();
-        $this->mockVectorizer = $this->createMockVectorizer();
+        $this->mockRetriever = $this->createMockRetriever();
 
         $this->tool = new LogSearchTool(
             $this->mockStore,
-            $this->mockVectorizer,
+            $this->mockRetriever,
             $this->platform
         );
     }
@@ -68,7 +68,7 @@ class LogSearchToolIntegrationTest extends TestCase
                     if (is_array($content)) {
                         foreach ($content as $contentItem) {
                             if (method_exists($contentItem, 'getText')) {
-                                $inputString .= $contentItem->getText() . ' ';
+                                $inputString .= $contentItem->getText().' ';
                             }
                         }
                     }
@@ -100,6 +100,7 @@ class LogSearchToolIntegrationTest extends TestCase
             if (str_contains($inputString, 'nuclear') || str_contains($inputString, 'physics') || str_contains($inputString, 'quantum')) {
                 return new VectorResult(new Vector([0.0, 0.0, 0.0, 0.0, 0.0]));
             }
+
             // Default vector for other queries
             return new VectorResult(new Vector([0.5, 0.5, 0.5, 0.5, 0.5]));
         }
@@ -116,11 +117,11 @@ class LogSearchToolIntegrationTest extends TestCase
             'Connection timed out' => strpos($inputString, 'Connection timed out'),
             'SQLSTATE' => strpos($inputString, 'SQLSTATE'),
             'PaymentException' => strpos($inputString, 'PaymentException'),
-            'Gateway timeout' => strpos($inputString, 'Gateway timeout')
+            'Gateway timeout' => strpos($inputString, 'Gateway timeout'),
         ];
 
         $logPositions = array_filter($logPositions, function ($pos) {
-            return $pos !== false;
+            return false !== $pos;
         });
 
         if (!empty($logPositions)) {
@@ -161,9 +162,9 @@ class LogSearchToolIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T14:23:45Z',
                     'level' => 'error',
                     'source' => 'payment-service',
-                    'tags' => ['payment', 'stripe', 'timeout', 'ecommerce']
+                    'tags' => ['payment', 'stripe', 'timeout', 'ecommerce'],
                 ],
-                'vector' => [0.8, 0.1, 0.2, 0.9, 0.3]
+                'vector' => [0.8, 0.1, 0.2, 0.9, 0.3],
             ],
             [
                 'content' => '[2024-01-15 14:23:46] production.ERROR: Doctrine\\DBAL\\Exception\\ConnectionException: SQLSTATE[HY000] [2002] Connection timed out (SQL: SELECT * FROM orders WHERE id = ORD-12345) []',
@@ -173,9 +174,9 @@ class LogSearchToolIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T14:23:46Z',
                     'level' => 'error',
                     'source' => 'database',
-                    'tags' => ['database', 'doctrine', 'timeout', 'sql']
+                    'tags' => ['database', 'doctrine', 'timeout', 'sql'],
                 ],
-                'vector' => [0.7, 0.2, 0.8, 0.1, 0.4]
+                'vector' => [0.7, 0.2, 0.8, 0.1, 0.4],
             ],
 
             // Authentication and security logs
@@ -187,9 +188,9 @@ class LogSearchToolIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T10:15:22Z',
                     'level' => 'warning',
                     'source' => 'security',
-                    'tags' => ['authentication', 'failed-login', 'security', 'admin']
+                    'tags' => ['authentication', 'failed-login', 'security', 'admin'],
                 ],
-                'vector' => [0.1, 0.9, 0.0, 0.2, 0.8]
+                'vector' => [0.1, 0.9, 0.0, 0.2, 0.8],
             ],
             [
                 'content' => '[2024-01-15 10:15:30] security.ERROR: User account "admin" locked after 3 failed login attempts from IP 192.168.1.100 {"user": "admin", "ip": "192.168.1.100", "failed_attempts": 3, "lockout_duration": 900} []',
@@ -199,9 +200,9 @@ class LogSearchToolIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T10:15:30Z',
                     'level' => 'error',
                     'source' => 'security',
-                    'tags' => ['authentication', 'account-locked', 'security', 'brute-force']
+                    'tags' => ['authentication', 'account-locked', 'security', 'brute-force'],
                 ],
-                'vector' => [0.0, 0.8, 0.1, 0.3, 0.9]
+                'vector' => [0.0, 0.8, 0.1, 0.3, 0.9],
             ],
 
             // Performance and memory issues
@@ -213,9 +214,9 @@ class LogSearchToolIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T16:45:10Z',
                     'level' => 'error',
                     'source' => 'php',
-                    'tags' => ['memory', 'php', 'fatal-error', 'performance']
+                    'tags' => ['memory', 'php', 'fatal-error', 'performance'],
                 ],
-                'vector' => [0.3, 0.4, 0.9, 0.0, 0.1]
+                'vector' => [0.3, 0.4, 0.9, 0.0, 0.1],
             ],
 
             // API and external service issues
@@ -227,9 +228,9 @@ class LogSearchToolIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T12:30:15Z',
                     'level' => 'error',
                     'source' => 'api-client',
-                    'tags' => ['api', 'timeout', 'curl', 'external-service']
+                    'tags' => ['api', 'timeout', 'curl', 'external-service'],
                 ],
-                'vector' => [0.6, 0.1, 0.4, 0.7, 0.5]
+                'vector' => [0.6, 0.1, 0.4, 0.7, 0.5],
             ],
 
             // File system and permission errors
@@ -241,10 +242,10 @@ class LogSearchToolIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T09:12:45Z',
                     'level' => 'error',
                     'source' => 'filesystem',
-                    'tags' => ['filesystem', 'permissions', 'storage', 'flysystem']
+                    'tags' => ['filesystem', 'permissions', 'storage', 'flysystem'],
                 ],
-                'vector' => [0.2, 0.7, 0.1, 0.4, 0.6]
-            ]
+                'vector' => [0.2, 0.7, 0.1, 0.4, 0.6],
+            ],
         ];
 
         foreach ($realWorldLogs as $logData) {
@@ -259,60 +260,50 @@ class LogSearchToolIntegrationTest extends TestCase
     private function createMockVectorLogStore(): VectorLogStoreInterface
     {
         $mockStore = $this->createMock(VectorLogStoreInterface::class);
-        
+
         // Configure mock to return relevant documents based on query vector
         $mockStore->method('queryForVector')
             ->willReturnCallback(function ($vector, $options = []) {
                 // Return documents from the real store based on similarity
                 $results = $this->store->query($vector, $options);
+
                 return $results;
             });
-        
+
         return $mockStore;
     }
 
-    private function createMockVectorizer(): LogDocumentVectorizerInterface
+    private function createMockRetriever(): LogRetrieverInterface
     {
-        $mockVectorizer = $this->createMock(LogDocumentVectorizerInterface::class);
+        $store = $this->store;
+        $mockRetriever = $this->createMock(LogRetrieverInterface::class);
 
-        // Configure mock to return vector documents
-        $mockVectorizer->method('vectorizeLogTextDocuments')
-            ->willReturnCallback(function ($documents) {
-                // Simple mock: return first document with a default vector
-                if (empty($documents)) {
-                    return [];
-                }
+        // Configure mock to retrieve documents from the real store based on query
+        $mockRetriever->method('retrieve')
+            ->willReturnCallback(function (string $query, array $options = []) use ($store) {
+                $queryLower = strtolower($query);
 
-                $firstDoc = $documents[0];
-                $content = method_exists($firstDoc, 'getContent') ? $firstDoc->getContent() : '';
-
-                // Generate different vectors based on content keywords (order matters - more specific first)
-                $contentLower = strtolower($content);
-                if (str_contains($contentLower, 'memory') || str_contains($contentLower, 'exhausted')) {
+                // Generate query vector based on content keywords
+                if (str_contains($queryLower, 'memory') || str_contains($queryLower, 'exhausted')) {
                     $vector = new Vector([0.3, 0.4, 0.9, 0.0, 0.1]);
-                } elseif (str_contains($contentLower, 'file') || str_contains($contentLower, 'permission')) {
+                } elseif (str_contains($queryLower, 'file') || str_contains($queryLower, 'permission')) {
                     $vector = new Vector([0.2, 0.7, 0.1, 0.4, 0.6]);
-                } elseif (str_contains($contentLower, 'checkout') || str_contains($contentLower, 'payment')) {
+                } elseif (str_contains($queryLower, 'checkout') || str_contains($queryLower, 'payment')) {
                     $vector = new Vector([0.8, 0.1, 0.2, 0.9, 0.3]);
-                } elseif (str_contains($contentLower, 'authentication') || str_contains($contentLower, 'login')) {
+                } elseif (str_contains($queryLower, 'authentication') || str_contains($queryLower, 'login')) {
                     $vector = new Vector([0.1, 0.9, 0.0, 0.2, 0.8]);
-                } elseif (str_contains($contentLower, 'api') || str_contains($contentLower, 'external') || str_contains($contentLower, 'service')) {
+                } elseif (str_contains($queryLower, 'api') || str_contains($queryLower, 'external') || str_contains($queryLower, 'service')) {
                     $vector = new Vector([0.6, 0.1, 0.4, 0.7, 0.5]);
-                } elseif (str_contains($contentLower, 'timeout')) {
+                } elseif (str_contains($queryLower, 'timeout')) {
                     $vector = new Vector([0.6, 0.1, 0.4, 0.7, 0.5]);
                 } else {
                     $vector = new Vector([0.5, 0.5, 0.5, 0.5, 0.5]);
                 }
 
-                $metadata = new Metadata([
-                    'content' => $content,
-                    'query_type' => 'search'
-                ]);
-
-                return [new VectorDocument(Uuid::v4(), $vector, $metadata)];
+                return $store->query($vector, $options);
             });
 
-        return $mockVectorizer;
+        return $mockRetriever;
     }
 
     public function testAnalyzeEcommerceCheckoutFailure(): void
@@ -345,8 +336,9 @@ class LogSearchToolIntegrationTest extends TestCase
 
         $foundSecurityLog = false;
         foreach ($result['evidence_logs'] as $log) {
-            if ($log['source'] === 'security') {
+            if ('security' === $log['source']) {
                 $foundSecurityLog = true;
+
                 break;
             }
         }
@@ -374,17 +366,18 @@ class LogSearchToolIntegrationTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertNotEmpty($result['evidence_logs']);
 
-        $isTimeoutResponse = str_contains($result['reason'], 'timeout') ||
-            str_contains($result['reason'], 'API') ||
-            str_contains($result['reason'], 'gateway') ||
-            str_contains($result['reason'], 'external service');
-        $this->assertTrue($isTimeoutResponse, 'Expected timeout-related response, got: ' . $result['reason']);
+        $isTimeoutResponse = str_contains($result['reason'], 'timeout')
+            || str_contains($result['reason'], 'API')
+            || str_contains($result['reason'], 'gateway')
+            || str_contains($result['reason'], 'external service');
+        $this->assertTrue($isTimeoutResponse, 'Expected timeout-related response, got: '.$result['reason']);
 
         // Should find logs related to timeouts (may include api, payment, or database logs)
         $foundTimeoutLog = false;
         foreach ($result['evidence_logs'] as $log) {
             if (in_array('timeout', $log['tags']) || in_array('api', $log['tags'])) {
                 $foundTimeoutLog = true;
+
                 break;
             }
         }
@@ -429,7 +422,6 @@ class LogSearchToolIntegrationTest extends TestCase
         $this->assertNotEmpty($result['evidence_logs']);
 
         foreach ($result['evidence_logs'] as $log) {
-
             $this->assertArrayHasKey('id', $log);
             $this->assertArrayHasKey('content', $log);
             $this->assertArrayHasKey('timestamp', $log);

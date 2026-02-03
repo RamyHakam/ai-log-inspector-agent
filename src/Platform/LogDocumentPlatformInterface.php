@@ -10,8 +10,6 @@ interface LogDocumentPlatformInterface
 {
     /**
      * Get the platform instance.
-     *
-     * @return PlatformInterface
      */
     public function getPlatform(): PlatformInterface;
 
@@ -19,8 +17,6 @@ interface LogDocumentPlatformInterface
 
     /**
      * Get the model instance.
-     *
-     * @return Model
      */
     public function getModel(): Model;
 
@@ -29,8 +25,6 @@ interface LogDocumentPlatformInterface
      *
      * Chat models (GPT-4, Claude, etc.) do NOT support embeddings.
      * Embedding models (text-embedding-ada-002, nomic-embed-text, etc.) DO support embeddings.
-     *
-     * @return bool
      */
     public function supportsEmbedding(): bool;
 }

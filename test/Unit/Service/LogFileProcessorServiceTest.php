@@ -27,7 +27,7 @@ class LogFileProcessorServiceTest extends TestCase
         $this->platform = $this->createMockPlatform();
         $this->store = new VectorLogDocumentStore();
         $this->loader = $this->createMockLoader();
-        
+
         $this->indexer = new LogFileIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
@@ -42,7 +42,7 @@ class LogFileProcessorServiceTest extends TestCase
     {
         // When no files specified, should index all logs
         $this->service->processLogFiles([]);
-        
+
         // If we get here without exception, operation was successful
         $this->assertTrue(true);
     }
@@ -50,9 +50,9 @@ class LogFileProcessorServiceTest extends TestCase
     public function testProcessLogFilesWithSingleFile(): void
     {
         $files = ['app.log'];
-        
+
         $this->service->processLogFiles($files);
-        
+
         $this->assertTrue(true);
     }
 
@@ -63,9 +63,9 @@ class LogFileProcessorServiceTest extends TestCase
             'error.log',
             'security.log',
         ];
-        
+
         $this->service->processLogFiles($files);
-        
+
         $this->assertTrue(true);
     }
 
@@ -76,9 +76,9 @@ class LogFileProcessorServiceTest extends TestCase
             'pattern' => '*.log',
             'recursive' => true,
         ];
-        
+
         $this->service->processLogFiles($files, $options);
-        
+
         $this->assertTrue(true);
     }
 
@@ -89,10 +89,10 @@ class LogFileProcessorServiceTest extends TestCase
             'pattern' => 'error-*.log',
             'recursive' => false,
         ];
-        
+
         // Should index all logs matching pattern
         $this->service->processLogFiles($files, $options);
-        
+
         $this->assertTrue(true);
     }
 
@@ -103,9 +103,9 @@ class LogFileProcessorServiceTest extends TestCase
             'pattern' => '*.log',
             'recursive' => true,
         ];
-        
+
         $this->service->processLogFiles($files, $options);
-        
+
         $this->assertTrue(true);
     }
 
@@ -115,9 +115,9 @@ class LogFileProcessorServiceTest extends TestCase
         $options = [
             'batch_size' => 100,
         ];
-        
+
         $this->service->processLogFiles($files, $options);
-        
+
         $this->assertTrue(true);
     }
 
@@ -128,9 +128,9 @@ class LogFileProcessorServiceTest extends TestCase
             '/var/log/app/staging.log',
             '/var/log/nginx/error.log',
         ];
-        
+
         $this->service->processLogFiles($files);
-        
+
         $this->assertTrue(true);
     }
 
@@ -141,9 +141,9 @@ class LogFileProcessorServiceTest extends TestCase
             'error.txt',
             'debug.out',
         ];
-        
+
         $this->service->processLogFiles($files);
-        
+
         $this->assertTrue(true);
     }
 
@@ -151,12 +151,12 @@ class LogFileProcessorServiceTest extends TestCase
     {
         // Simulate processing many log files
         $files = [];
-        for ($i = 1; $i <= 50; $i++) {
+        for ($i = 1; $i <= 50; ++$i) {
             $files[] = "app-{$i}.log";
         }
-        
+
         $this->service->processLogFiles($files);
-        
+
         $this->assertTrue(true);
     }
 
@@ -169,9 +169,9 @@ class LogFileProcessorServiceTest extends TestCase
             'batch_size' => 50,
             'max_file_size' => 1024 * 1024 * 10, // 10MB
         ];
-        
+
         $this->service->processLogFiles($files, $options);
-        
+
         $this->assertTrue(true);
     }
 
@@ -179,7 +179,7 @@ class LogFileProcessorServiceTest extends TestCase
     {
         // Empty array should trigger indexAllLogs()
         $this->service->processLogFiles([]);
-        
+
         $this->assertTrue(true);
     }
 
@@ -189,9 +189,9 @@ class LogFileProcessorServiceTest extends TestCase
         $options = [
             'pattern' => 'app-2024-*.log',
         ];
-        
+
         $this->service->processLogFiles($files, $options);
-        
+
         $this->assertTrue(true);
     }
 
@@ -202,9 +202,9 @@ class LogFileProcessorServiceTest extends TestCase
             'app-2024-01-16.log',
             'app-2024-01-17.log',
         ];
-        
+
         $this->service->processLogFiles($files);
-        
+
         $this->assertTrue(true);
     }
 
@@ -215,9 +215,9 @@ class LogFileProcessorServiceTest extends TestCase
             'app.log.gz',
             'app.log.zip',
         ];
-        
+
         $this->service->processLogFiles($files);
-        
+
         $this->assertTrue(true);
     }
 
@@ -229,9 +229,9 @@ class LogFileProcessorServiceTest extends TestCase
             'app.log.2',
             'app.log.3',
         ];
-        
+
         $this->service->processLogFiles($files);
-        
+
         $this->assertTrue(true);
     }
 
@@ -244,7 +244,9 @@ class LogFileProcessorServiceTest extends TestCase
             public function invoke(string $model, array|string|object $input, array $options = []): DeferredResult
             {
                 $mockResult = new class($input) implements ResultInterface {
-                    public function __construct(private array|string|object $input) {}
+                    public function __construct(private array|string|object $input)
+                    {
+                    }
 
                     public function getContent(): mixed
                     {
@@ -254,8 +256,8 @@ class LogFileProcessorServiceTest extends TestCase
                 };
 
                 return new DeferredResult(
-                    fn() => $mockResult->getContent(),
-                    fn($content) => $mockResult
+                    fn () => $mockResult->getContent(),
+                    fn ($content) => $mockResult
                 );
             }
 
@@ -291,11 +293,11 @@ class LogFileProcessorServiceTest extends TestCase
     private function createMockLoader(): LoaderInterface
     {
         $loader = $this->createMock(LoaderInterface::class);
-        
+
         // Mock load method to return empty iterator
         $loader->method('load')
             ->willReturn(new \ArrayIterator([]));
-        
+
         return $loader;
     }
 }

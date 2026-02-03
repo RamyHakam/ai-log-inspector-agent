@@ -24,22 +24,13 @@ class LogSearchTool implements LogInspectorToolInterface
 
 ## How It Works
 
-### 1. Vectorization
+### 1. Retrieval via LogRetriever
 
-When you search for "payment errors", the tool:
-
-```php
-// Step 1: Convert query to vector
-$queryDocument = TextDocumentFactory::createFromString('payment errors');
-$queryVector = $vectorizer->vectorize($queryDocument); 
-// Result: [0.2, 0.8, 0.1, ...] (1536 dimensions)
-```
-
-### 2. Vector Search
+When you search for "payment errors", the tool uses the `LogRetriever` to vectorize the query and search the store in one step:
 
 ```php
-// Step 2: Find similar logs
-$results = $store->queryForVector($queryVector, ['maxItems' => 15]);
+// Step 1: Retrieve similar logs (vectorization + search combined)
+$results = $retriever->retrieve('payment errors', ['maxItems' => 15]);
 
 // Results sorted by similarity:
 // - log_001: 0.94 ✅ (highly relevant)
@@ -47,10 +38,10 @@ $results = $store->queryForVector($queryVector, ['maxItems' => 15]);
 // - log_012: 0.45 ❌ (below threshold)
 ```
 
-### 3. Filtering
+### 2. Filtering
 
 ```php
-// Step 3: Filter by relevance threshold (0.7)
+// Step 2: Filter by relevance threshold (0.7)
 $relevantLogs = array_filter($results, function($log) {
     return $log->similarity >= 0.7;
 });
@@ -134,12 +125,15 @@ The tool returns a structured array:
 
 ## Fallback Strategy
 
-When vectorization is unavailable (e.g., Ollama without embedding support), the tool automatically falls back to intelligent keyword search:
+When the retriever fails (e.g., Ollama without embedding support, network errors), the tool catches `\Throwable` and automatically falls back to intelligent keyword search:
 
 ```php
-// Automatic fallback to keyword search
-if (!$this->supportsVectorization) {
-    return $this->performKeywordSearch($query);
+try {
+    $results = $this->performSemanticSearch($query);
+} catch (\Throwable $e) {
+    // Automatic fallback to keyword search
+    $this->supportsVectorization = false;
+    $results = $this->performKeywordSearch($query);
 }
 ```
 
@@ -240,9 +234,9 @@ $recentLogs = array_filter($logs, function($log) {
 
 ```php
 // Cache vectorized queries
-$cacheKey = 'query_vector_' . md5($query);
-$queryVector = $cache->remember($cacheKey, 3600, function() use ($query) {
-    return $this->vectorizer->vectorize($query);
+$cacheKey = 'query_results_' . md5($query);
+$results = $cache->remember($cacheKey, 3600, function() use ($query) {
+    return $this->retriever->retrieve($query);
 });
 ```
 

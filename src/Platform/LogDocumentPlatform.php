@@ -36,32 +36,23 @@ class LogDocumentPlatform implements LogDocumentPlatformInterface
         if (is_string($query)) {
             $content = new Text($query);
             $message = new UserMessage($content);
-            $query   = new MessageBag($message);
+            $query = new MessageBag($message);
         }
 
         try {
             $resultPromise = $this->platform->invoke($this->model->getModel()->getName(), $query, $options);
+
             return $resultPromise->getResult();
         } catch (ClientException $e) {
             // Handle common Ollama API compatibility issues
             $errorMessage = $e->getMessage();
 
             if (str_contains($errorMessage, '404') && str_contains($errorMessage, '/api/show')) {
-                throw new \RuntimeException(
-                    'Ollama API endpoint "/api/show" not found. This indicates an incompatible Ollama version. ' .
-                    'Please ensure you are using Ollama v0.1.0+ and the model "' . $this->model->getModel()->getName() . '" is properly loaded. ' .
-                    'Try: ollama pull ' . $this->model->getModel()->getName(),
-                    0,
-                    $e
-                );
+                throw new \RuntimeException('Ollama API endpoint "/api/show" not found. This indicates an incompatible Ollama version. Please ensure you are using Ollama v0.1.0+ and the model "'.$this->model->getModel()->getName().'" is properly loaded. Try: ollama pull '.$this->model->getModel()->getName(), 0, $e);
             }
 
             if (str_contains($errorMessage, '404')) {
-                throw new \RuntimeException(
-                    'Ollama API endpoint not found. Please ensure Ollama is running on the correct host and the API is accessible.',
-                    0,
-                    $e
-                );
+                throw new \RuntimeException('Ollama API endpoint not found. Please ensure Ollama is running on the correct host and the API is accessible.', 0, $e);
             }
 
             throw $e;

@@ -5,24 +5,22 @@ namespace Hakam\AiLogInspector\Test\Integration;
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
 use Hakam\AiLogInspector\Model\LogDocumentModel;
 use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
-use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
-use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Platform\Capability;
-use Symfony\AI\Platform\Test\InMemoryPlatform;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
+use Symfony\AI\Platform\Test\InMemoryPlatform;
 use Symfony\AI\Platform\Vector\Vector;
-use Symfony\AI\Store\InMemory\Store;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
+use Symfony\AI\Store\InMemory\Store;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Simplified integration tests for core functionality
+ * Simplified integration tests for core functionality.
  */
 class SimpleIntegrationTest extends TestCase
 {
@@ -36,33 +34,33 @@ class SimpleIntegrationTest extends TestCase
     protected function setUp(): void
     {
         $this->store = new Store();
-        
+
         // Create model with tool calling capability
         $this->model = new LogDocumentModel(
             'integration-test-model',
             [Capability::TOOL_CALLING, Capability::INPUT_TEXT, Capability::OUTPUT_TEXT]
         );
-        
+
         $this->setupTestLogData();
-        
+
         // Create platform with response handler
         $this->symfonyPlatform = new InMemoryPlatform(
             function (Model $model, array|string|object $input, array $options = []) {
                 return $this->handleRequest($input);
             }
         );
-        
+
         $this->platform = new LogDocumentPlatform($this->symfonyPlatform, $this->model);
-        
+
         // Create mock tool for the agent
         $tools = [$this->createMockLogSearchTool()];
-        
+
         $this->agent = new LogInspectorAgent(
             $this->platform,
             $tools,
             'You are an AI Log Inspector. Use the log_search tool to find relevant log entries and analyze them.'
         );
-        
+
         // Create the actual tool for direct testing
         $this->tool = $this->createDirectLogSearchTool();
     }
@@ -82,21 +80,21 @@ class SimpleIntegrationTest extends TestCase
                     if (is_array($content)) {
                         foreach ($content as $contentItem) {
                             if (method_exists($contentItem, 'getText')) {
-                                $inputString .= $contentItem->getText() . ' ';
+                                $inputString .= $contentItem->getText().' ';
                             }
                         }
                     } else {
-                        $inputString .= (string) $content . ' ';
+                        $inputString .= (string) $content.' ';
                     }
                 }
             }
         } else {
             $inputString = '';
         }
-        
+
         // Debug: echo the input to understand what's being sent
         // echo "DEBUG: Input received: '$inputString'\n";
-        
+
         // Vector generation for queries (shorter inputs without "Analyze")
         if (!str_contains($inputString, 'Analyze these log entries')) {
             if (str_contains($inputString, 'database') || str_contains($inputString, 'connection')) {
@@ -108,36 +106,37 @@ class SimpleIntegrationTest extends TestCase
             if (str_contains($inputString, 'payment') || str_contains($inputString, 'checkout')) {
                 return new VectorResult(new Vector([0.9, 0.1, 0.2, 0.8, 0.3]));
             }
+
             // Default vector for unknown queries
             return new VectorResult(new Vector([0.5, 0.5, 0.5, 0.5, 0.5]));
         }
-        
+
         // Analysis responses based on log content - check the first matching log entry in order
         $logPositions = [
             'ConnectionException' => strpos($inputString, 'ConnectionException'),
             'Too many connections' => strpos($inputString, 'Too many connections'),
             'Authentication failure' => strpos($inputString, 'Authentication failure'),
             'PaymentException' => strpos($inputString, 'PaymentException'),
-            'Gateway timeout' => strpos($inputString, 'Gateway timeout')
+            'Gateway timeout' => strpos($inputString, 'Gateway timeout'),
         ];
-        
+
         // Filter out false positions and find the earliest one
-        $logPositions = array_filter($logPositions, function($pos) { return $pos !== false; });
-        
+        $logPositions = array_filter($logPositions, function ($pos) { return false !== $pos; });
+
         if (!empty($logPositions)) {
             $firstLogType = array_keys($logPositions, min($logPositions))[0];
-            
+
             if (in_array($firstLogType, ['ConnectionException', 'Too many connections'])) {
                 return new TextResult('Database connection failure due to connection pool exhaustion. The application could not establish a connection to the database, indicating the connection pool was at capacity.');
             }
-            if ($firstLogType === 'Authentication failure') {
+            if ('Authentication failure' === $firstLogType) {
                 return new TextResult('Multiple failed authentication attempts detected from the same IP address, triggering security lockout mechanisms to prevent brute force attacks.');
             }
             if (in_array($firstLogType, ['PaymentException', 'Gateway timeout'])) {
                 return new TextResult('Payment gateway timeout caused checkout failure. The payment service was unable to process the transaction within the timeout period, likely due to high load or network issues with the payment provider.');
             }
         }
-        
+
         return new TextResult('Unable to determine the specific cause from the available logs.');
     }
 
@@ -152,9 +151,9 @@ class SimpleIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T14:23:45Z',
                     'level' => 'error',
                     'source' => 'payment-service',
-                    'tags' => ['payment', 'stripe', 'timeout']
+                    'tags' => ['payment', 'stripe', 'timeout'],
                 ],
-                'vector' => [0.9, 0.1, 0.2, 0.8, 0.3]
+                'vector' => [0.9, 0.1, 0.2, 0.8, 0.3],
             ],
             [
                 'content' => '[2024-01-15 14:24:12] production.ERROR: Doctrine\\DBAL\\Exception\\ConnectionException: Too many connections {"sql": "SELECT * FROM orders"} []',
@@ -164,9 +163,9 @@ class SimpleIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T14:24:12Z',
                     'level' => 'error',
                     'source' => 'database',
-                    'tags' => ['database', 'connection', 'doctrine']
+                    'tags' => ['database', 'connection', 'doctrine'],
                 ],
-                'vector' => [0.2, 0.3, 0.9, 0.1, 0.5]
+                'vector' => [0.2, 0.3, 0.9, 0.1, 0.5],
             ],
             [
                 'content' => '[2024-01-15 10:15:22] security.WARNING: Authentication failure for user "admin" from IP 192.168.1.100 {"user": "admin", "ip": "192.168.1.100"} []',
@@ -176,16 +175,16 @@ class SimpleIntegrationTest extends TestCase
                     'timestamp' => '2024-01-15T10:15:22Z',
                     'level' => 'warning',
                     'source' => 'security',
-                    'tags' => ['authentication', 'security', 'failed-login']
+                    'tags' => ['authentication', 'security', 'failed-login'],
                 ],
-                'vector' => [0.1, 0.9, 0.0, 0.3, 0.7]
-            ]
+                'vector' => [0.1, 0.9, 0.0, 0.3, 0.7],
+            ],
         ];
 
         foreach ($testLogs as $logData) {
             $vector = new Vector($logData['vector']);
             $metadata = new Metadata($logData['metadata']);
-            
+
             $document = new VectorDocument(Uuid::v4(), $vector, $metadata);
             $this->store->add($document);
         }
@@ -196,36 +195,36 @@ class SimpleIntegrationTest extends TestCase
         return new #[AsTool(name: 'log_search', description: 'Search logs for simple testing')] class($this->store, $this->platform) {
             private Store $store;
             private LogDocumentPlatform $platform;
-            
+
             public function __construct(Store $store, LogDocumentPlatform $platform)
             {
                 $this->store = $store;
                 $this->platform = $platform;
             }
-            
+
             public function __invoke(string $query): array
             {
                 if (empty(trim($query))) {
                     return [
                         'success' => false,
                         'message' => 'Query cannot be empty',
-                        'logs' => []
+                        'logs' => [],
                     ];
                 }
-                
+
                 try {
                     // Simple vector search
                     $searchResults = $this->store->query(
-                        new Vector([0.5, 0.5, 0.5, 0.5, 0.5]), 
+                        new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
                         ['maxItems' => 10]
                     );
-                    
+
                     $allDocs = [];
                     foreach ($searchResults as $doc) {
                         if ($doc instanceof VectorDocument) {
                             $metadata = $doc->metadata;
                             $content = $metadata['content'] ?? 'No content';
-                            
+
                             // Simple keyword matching
                             if (str_contains(strtolower($content), strtolower($query))) {
                                 $allDocs[] = [
@@ -234,37 +233,36 @@ class SimpleIntegrationTest extends TestCase
                                     'timestamp' => $metadata['timestamp'] ?? null,
                                     'level' => $metadata['level'] ?? 'unknown',
                                     'source' => $metadata['source'] ?? 'unknown',
-                                    'tags' => $metadata['tags'] ?? []
+                                    'tags' => $metadata['tags'] ?? [],
                                 ];
                             }
                         }
                     }
-                    
+
                     if (empty($allDocs)) {
                         return [
                             'success' => false,
                             'reason' => 'No relevant log entries found',
-                            'evidence_logs' => []
+                            'evidence_logs' => [],
                         ];
                     }
-                    
+
                     // Simple analysis
                     $combinedContent = implode("\n", array_column($allDocs, 'content'));
                     $analysisResult = $this->platform->__invoke(
-                        "Analyze these log entries: \n\n" . $combinedContent
+                        "Analyze these log entries: \n\n".$combinedContent
                     );
-                    
+
                     return [
                         'success' => true,
                         'reason' => $analysisResult->getContent(),
-                        'evidence_logs' => $allDocs
+                        'evidence_logs' => $allDocs,
                     ];
-                    
                 } catch (\Exception $e) {
                     return [
                         'success' => false,
-                        'message' => 'Search failed: ' . $e->getMessage(),
-                        'logs' => []
+                        'message' => 'Search failed: '.$e->getMessage(),
+                        'logs' => [],
                     ];
                 }
             }
@@ -277,34 +275,34 @@ class SimpleIntegrationTest extends TestCase
         return new class($this->store, $this->platform) {
             private Store $store;
             private LogDocumentPlatform $platform;
-            
+
             public function __construct(Store $store, LogDocumentPlatform $platform)
             {
                 $this->store = $store;
                 $this->platform = $platform;
             }
-            
+
             public function __invoke(string $query): array
             {
                 if (empty(trim($query))) {
                     return [
                         'success' => false,
                         'message' => 'Query cannot be empty',
-                        'logs' => []
+                        'logs' => [],
                     ];
                 }
-                
+
                 try {
                     // Vector search based on query type
                     $queryVector = $this->getQueryVector($query);
                     $searchResults = $this->store->query($queryVector, ['maxItems' => 10]);
-                    
+
                     $relevantLogs = [];
                     foreach ($searchResults as $doc) {
                         if ($doc instanceof VectorDocument) {
                             $metadata = $doc->metadata;
                             $content = $metadata['content'] ?? 'No content';
-                            
+
                             // Enhanced keyword matching
                             if ($this->isRelevant($content, $query)) {
                                 $relevantLogs[] = [
@@ -313,45 +311,44 @@ class SimpleIntegrationTest extends TestCase
                                     'timestamp' => $metadata['timestamp'] ?? null,
                                     'level' => $metadata['level'] ?? 'unknown',
                                     'source' => $metadata['source'] ?? 'unknown',
-                                    'tags' => $metadata['tags'] ?? []
+                                    'tags' => $metadata['tags'] ?? [],
                                 ];
                             }
                         }
                     }
-                    
+
                     if (empty($relevantLogs)) {
                         return [
                             'success' => false,
                             'reason' => 'No relevant log entries found to determine the cause of the issue.',
-                            'evidence_logs' => []
+                            'evidence_logs' => [],
                         ];
                     }
-                    
+
                     // AI analysis
                     $combinedContent = implode("\n", array_column($relevantLogs, 'content'));
                     $analysisResult = $this->platform->__invoke(
-                        "Analyze these log entries and provide a concise explanation: \n\n" . $combinedContent
+                        "Analyze these log entries and provide a concise explanation: \n\n".$combinedContent
                     );
-                    
+
                     return [
                         'success' => true,
                         'reason' => $analysisResult->getContent(),
-                        'evidence_logs' => $relevantLogs
+                        'evidence_logs' => $relevantLogs,
                     ];
-                    
                 } catch (\Exception $e) {
                     return [
                         'success' => false,
-                        'message' => 'Search failed: ' . $e->getMessage(),
-                        'logs' => []
+                        'message' => 'Search failed: '.$e->getMessage(),
+                        'logs' => [],
                     ];
                 }
             }
-            
+
             private function getQueryVector(string $query): Vector
             {
                 $lowerQuery = strtolower($query);
-                
+
                 if (str_contains($lowerQuery, 'payment') || str_contains($lowerQuery, 'checkout')) {
                     return new Vector([0.9, 0.1, 0.2, 0.8, 0.3]);
                 }
@@ -361,20 +358,20 @@ class SimpleIntegrationTest extends TestCase
                 if (str_contains($lowerQuery, 'authentication') || str_contains($lowerQuery, 'security')) {
                     return new Vector([0.1, 0.9, 0.0, 0.3, 0.7]);
                 }
-                
+
                 return new Vector([0.5, 0.5, 0.5, 0.5, 0.5]);
             }
-            
+
             private function isRelevant(string $content, string $query): bool
             {
                 $lowerContent = strtolower($content);
                 $lowerQuery = strtolower($query);
-                
+
                 // Direct substring match
                 if (str_contains($lowerContent, $lowerQuery)) {
                     return true;
                 }
-                
+
                 // Semantic matching
                 $queryWords = explode(' ', $lowerQuery);
                 foreach ($queryWords as $word) {
@@ -382,7 +379,7 @@ class SimpleIntegrationTest extends TestCase
                         return true;
                     }
                 }
-                
+
                 return false;
             }
         };
@@ -392,14 +389,13 @@ class SimpleIntegrationTest extends TestCase
      * NOTE: Agent tests are currently disabled due to MessageBag handling complexity.
      * The LogSearchTool integration tests below demonstrate the core functionality works.
      */
-
     public function testAgentIntegrationNote(): void
     {
         // This test documents that agent integration requires more complex MessageBag handling
         // For now, we focus on LogSearchTool integration which demonstrates the core functionality
         $this->assertInstanceOf(LogInspectorAgent::class, $this->agent);
         $this->assertIsObject($this->tool);
-        
+
         // The agent and tool are properly constructed with real Symfony AI components
         $this->assertNotNull($this->agent);
         $this->assertNotNull($this->tool);
@@ -408,17 +404,17 @@ class SimpleIntegrationTest extends TestCase
     public function testLogSearchToolDirectly(): void
     {
         $result = $this->tool->__invoke('payment gateway timeout');
-        
+
         $this->assertIsArray($result);
         $this->assertArrayHasKey('success', $result);
         $this->assertArrayHasKey('reason', $result);
         $this->assertArrayHasKey('evidence_logs', $result);
-        
+
         if ($result['success']) {
             $this->assertNotEmpty($result['reason']);
             $this->assertStringContainsString('Payment gateway', $result['reason']);
             $this->assertNotEmpty($result['evidence_logs']);
-            
+
             // Verify log structure
             $log = $result['evidence_logs'][0];
             $this->assertArrayHasKey('id', $log);
@@ -432,14 +428,14 @@ class SimpleIntegrationTest extends TestCase
     public function testLogSearchToolWithDatabaseQuery(): void
     {
         $result = $this->tool->__invoke('database connection error');
-        
+
         $this->assertIsArray($result);
         $this->assertArrayHasKey('success', $result);
-        
+
         if ($result['success']) {
             $this->assertStringContainsString('connection', $result['reason']);
             $this->assertNotEmpty($result['evidence_logs']);
-            
+
             $log = $result['evidence_logs'][0];
             $this->assertEquals('database_001', $log['id']);
             $this->assertEquals('error', $log['level']);
@@ -450,14 +446,14 @@ class SimpleIntegrationTest extends TestCase
     public function testLogSearchToolWithSecurityQuery(): void
     {
         $result = $this->tool->__invoke('authentication failure admin');
-        
+
         $this->assertIsArray($result);
         $this->assertArrayHasKey('success', $result);
-        
+
         if ($result['success']) {
             $this->assertStringContainsString('authentication', $result['reason']);
             $this->assertNotEmpty($result['evidence_logs']);
-            
+
             $log = $result['evidence_logs'][0];
             $this->assertEquals('security_001', $log['id']);
             $this->assertEquals('warning', $log['level']);
@@ -468,7 +464,7 @@ class SimpleIntegrationTest extends TestCase
     public function testEmptyQueryHandling(): void
     {
         $result = $this->tool->__invoke('');
-        
+
         $this->assertFalse($result['success']);
         $this->assertEquals('Query cannot be empty', $result['message']);
         $this->assertEmpty($result['logs']);
@@ -477,7 +473,7 @@ class SimpleIntegrationTest extends TestCase
     public function testWhitespaceQueryHandling(): void
     {
         $result = $this->tool->__invoke('   ');
-        
+
         $this->assertFalse($result['success']);
         $this->assertEquals('Query cannot be empty', $result['message']);
         $this->assertEmpty($result['logs']);
@@ -486,7 +482,7 @@ class SimpleIntegrationTest extends TestCase
     public function testUnknownQueryHandling(): void
     {
         $result = $this->tool->__invoke('quantum physics nuclear reactor');
-        
+
         $this->assertIsArray($result);
         // Should either succeed with a generic response or fail gracefully
         $this->assertArrayHasKey('success', $result);
@@ -498,7 +494,7 @@ class SimpleIntegrationTest extends TestCase
     public function testLogMetadataIntegrity(): void
     {
         $result = $this->tool->__invoke('payment timeout');
-        
+
         if ($result['success'] && !empty($result['evidence_logs'])) {
             foreach ($result['evidence_logs'] as $log) {
                 $this->assertArrayHasKey('id', $log);
@@ -507,7 +503,7 @@ class SimpleIntegrationTest extends TestCase
                 $this->assertArrayHasKey('level', $log);
                 $this->assertArrayHasKey('source', $log);
                 $this->assertArrayHasKey('tags', $log);
-                
+
                 $this->assertIsString($log['id']);
                 $this->assertIsString($log['content']);
                 $this->assertIsString($log['level']);

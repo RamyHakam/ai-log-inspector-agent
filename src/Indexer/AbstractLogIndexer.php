@@ -14,7 +14,6 @@ use Symfony\AI\Store\Indexer;
 use Symfony\AI\Store\IndexerInterface;
 
 /**
- *
  * Provides common functionality for indexing log documents and files,
  * including vectorization, text chunking, and embedding support validation.
  */
@@ -23,12 +22,12 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
     protected IndexerInterface $indexer;
 
     /**
-     * @param PlatformInterface $embeddingPlatform The AI platform for generating embeddings
-     * @param string $model The embedding model to use (e.g., 'text-embedding-3-small')
-     * @param LoaderInterface $loader The document loader for loading log data
-     * @param VectorLogStoreInterface $logStore The vector store for storing embeddings
-     * @param int $chunkSize Size of text chunks for splitting (default: 500)
-     * @param int $chunkOverlap Overlap between chunks to maintain context (default: 100)
+     * @param PlatformInterface       $embeddingPlatform The AI platform for generating embeddings
+     * @param string                  $model             The embedding model to use (e.g., 'text-embedding-3-small')
+     * @param LoaderInterface         $loader            The document loader for loading log data
+     * @param VectorLogStoreInterface $logStore          The vector store for storing embeddings
+     * @param int                     $chunkSize         Size of text chunks for splitting (default: 500)
+     * @param int                     $chunkOverlap      Overlap between chunks to maintain context (default: 100)
      */
     public function __construct(
         protected readonly PlatformInterface $embeddingPlatform,
@@ -50,11 +49,7 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
     protected function validateEmbeddingSupport(): void
     {
         if (!$this->checkForEmbeddingSupport()) {
-            throw new \RuntimeException(sprintf(
-                'The model "%s" does not support embeddings. Please use a platform that supports the "%s" capability.',
-                $this->model,
-                Capability::EMBEDDINGS->name,
-            ));
+            throw new \RuntimeException(sprintf('The model "%s" does not support embeddings. Please use a platform that supports the "%s" capability.', $this->model, Capability::EMBEDDINGS->name));
         }
     }
 
@@ -93,8 +88,6 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
 
     /**
      * Check if the platform supports embeddings capability.
-     *
-     * @return bool
      */
     public function checkForEmbeddingSupport(): bool
     {
@@ -105,8 +98,6 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
 
     /**
      * Get the underlying Symfony AI indexer.
-     *
-     * @return IndexerInterface
      */
     public function getIndexer(): IndexerInterface
     {
@@ -115,8 +106,6 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
 
     /**
      * Get the vector store used by this indexer.
-     *
-     * @return VectorLogStoreInterface
      */
     public function getStore(): VectorLogStoreInterface
     {
@@ -125,8 +114,6 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
 
     /**
      * Get the embedding model name.
-     *
-     * @return string
      */
     public function getModel(): string
     {
@@ -135,8 +122,6 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
 
     /**
      * Get the chunk size used for text splitting.
-     *
-     * @return int
      */
     public function getChunkSize(): int
     {
@@ -145,8 +130,6 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
 
     /**
      * Get the chunk overlap size.
-     *
-     * @return int
      */
     public function getChunkOverlap(): int
     {

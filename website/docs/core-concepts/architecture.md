@@ -27,6 +27,15 @@ The AI Log Inspector Agent follows a modular, tool-based architecture built on t
          │
          ▼
 ┌──────────────────────────────────────────────────────────┐
+│                   Retriever Layer                         │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │ LogRetriever (wraps Symfony Retriever)              │ │
+│  │  • Vectorizes query → Searches store → Returns     │ │
+│  └─────────────────────────────────────────────────────┘ │
+└───────────────────────────┬──────────────────────────────┘
+                            │
+                            ▼
+┌──────────────────────────────────────────────────────────┐
 │                    Indexer Layer                          │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │ VectorLogDocumentIndexer                            │ │
@@ -206,19 +215,25 @@ $indexer->indexAllLogs();                    // All .log files
 3. Vectorizer converts chunks to embeddings via AI API
 4. VectorDocuments stored in Vector Store
 
-### 6. Vectorizer
+### 6. Retriever
 
-The vectorizer converts text documents into vector embeddings:
+The `LogRetriever` handles vectorization and search in a single step, wrapping Symfony's `Retriever` internally:
 
 ```php
-use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
+use Hakam\AiLogInspector\Retriever\LogRetriever;
 
-$vectorizer = new LogDocumentVectorizer($platform, 'text-embedding-3-small');
+// The retriever handles vectorization + search in one step
+$retriever = new LogRetriever(
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    logStore: $store
+);
 
-// Convert text documents to vector documents
-$textDocs = [/* TextDocument objects */];
-$vectorDocs = $vectorizer->vectorizeLogTextDocuments($textDocs);
+// Retrieve semantically similar logs
+$results = $retriever->retrieve('payment timeout errors', ['maxItems' => 15]);
 ```
+
+The `LogRetriever` implements `LogRetrieverInterface` and is used by both `LogSearchTool` and `RequestContextTool` for semantic search. The Vectorizer is still used internally by the Indexer pipeline for document ingestion.
 
 ## Data Flow
 
@@ -245,9 +260,8 @@ Log Files (*.log)
 User Query
     ├─▶ LogInspectorAgent
     │       ├─▶ Selects Tool (LogSearchTool)
-    │       │       ├─▶ Vectorize Query
-    │       │       ├─▶ Search Vector Store
-    │       │       ├─▶ Filter Results (similarity > 0.7)
+    │       │       ├─▶ Retrieve via LogRetriever
+    │       │       ├─▶ Filter Results by Relevance
     │       │       └─▶ AI Analysis
     │       └─▶ Format Response
     └─▶ Return to User

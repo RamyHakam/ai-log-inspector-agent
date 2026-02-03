@@ -7,3 +7,4 @@
 # Documentation files (keep only README.md)
 /*.md
 !README.md
+/var/.php-cs-fixer.cache

@@ -2,14 +2,14 @@
 
 namespace Hakam\AiLogInspector\Test\Support;
 
-use Symfony\AI\Store\InMemory\Store;
+use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
-use Symfony\AI\Platform\Vector\Vector;
+use Symfony\AI\Store\InMemory\Store;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * LogFileLoader - Loads realistic PHP application logs from fixture files
+ * LogFileLoader - Loads realistic PHP application logs from fixture files.
  */
 class LogFileLoader
 {
@@ -23,7 +23,7 @@ class LogFileLoader
 
     private array $logCategories = [
         'payment-errors.log' => 'payment',
-        'database-errors.log' => 'database', 
+        'database-errors.log' => 'database',
         'security-errors.log' => 'security',
         'application-errors.log' => 'application',
         'performance-errors.log' => 'performance',
@@ -32,32 +32,32 @@ class LogFileLoader
     public function loadLogsIntoStore(Store $store, ?array $categories = null): array
     {
         $loadedLogs = [];
-        $fixturesPath = __DIR__ . '/../fixtures/logs/';
-        
+        $fixturesPath = __DIR__.'/../fixtures/logs/';
+
         $categoriesToLoad = $categories ?? array_values($this->logCategories);
-        
+
         foreach ($categoriesToLoad as $category) {
             $filename = $this->getCategoryFilename($category);
             if (!$filename) {
                 continue;
             }
-            
-            $filePath = $fixturesPath . $filename;
+
+            $filePath = $fixturesPath.$filename;
             if (!file_exists($filePath)) {
                 throw new \RuntimeException("Log fixture file not found: {$filePath}");
             }
-            
+
             $logs = $this->parseLogFile($filePath, $category);
             foreach ($logs as $logData) {
                 $vector = new Vector($logData['vector']);
                 $metadata = new Metadata($logData['metadata']);
                 $document = new VectorDocument(Uuid::v4(), $vector, $metadata);
                 $store->add($document);
-                
+
                 $loadedLogs[] = $logData;
             }
         }
-        
+
         return $loadedLogs;
     }
 
@@ -67,14 +67,14 @@ class LogFileLoader
         if (!$filename) {
             return [];
         }
-        
-        $fixturesPath = __DIR__ . '/../fixtures/logs/';
-        $filePath = $fixturesPath . $filename;
-        
+
+        $fixturesPath = __DIR__.'/../fixtures/logs/';
+        $filePath = $fixturesPath.$filename;
+
         if (!file_exists($filePath)) {
             throw new \RuntimeException("Log fixture file not found: {$filePath}");
         }
-        
+
         return $this->parseLogFile($filePath, $category);
     }
 
@@ -86,14 +86,14 @@ class LogFileLoader
     public function getLogStats(): array
     {
         $stats = [];
-        $fixturesPath = __DIR__ . '/../fixtures/logs/';
-        
+        $fixturesPath = __DIR__.'/../fixtures/logs/';
+
         foreach ($this->logCategories as $filename => $category) {
-            $filePath = $fixturesPath . $filename;
+            $filePath = $fixturesPath.$filename;
             if (file_exists($filePath)) {
                 $content = file_get_contents($filePath);
                 $logCount = substr_count($content, "\n") + 1;
-                
+
                 $stats[$category] = [
                     'filename' => $filename,
                     'logCount' => $logCount,
@@ -101,7 +101,7 @@ class LogFileLoader
                 ];
             }
         }
-        
+
         return $stats;
     }
 
@@ -112,6 +112,7 @@ class LogFileLoader
                 return $filename;
             }
         }
+
         return null;
     }
 
@@ -121,15 +122,15 @@ class LogFileLoader
         $lines = array_filter(explode("\n", $content));
         $logs = [];
         $logId = 1;
-        
+
         foreach ($lines as $line) {
             $parsedLog = $this->parseLogEntry($line, $category, $logId);
             if ($parsedLog) {
                 $logs[] = $parsedLog;
-                $logId++;
+                ++$logId;
             }
         }
-        
+
         return $logs;
     }
 
@@ -137,28 +138,28 @@ class LogFileLoader
     {
         // Parse Monolog format: [timestamp] level.LEVEL: message {context} [extra]
         $pattern = '/^\[(.+?)\]\s+(.+?)\.(\w+):\s+(.+?)(?:\s+(\{.+?\}))?(?:\s+(\[.+?\]))?$/';
-        
+
         if (!preg_match($pattern, $logLine, $matches)) {
             return null;
         }
-        
+
         $timestamp = $matches[1] ?? '';
         $channel = $matches[2] ?? 'app';
         $level = strtolower($matches[3] ?? 'info');
         $message = $matches[4] ?? '';
         $contextJson = $matches[5] ?? '{}';
         $extraJson = $matches[6] ?? '[]';
-        
+
         // Parse context and extra data
         $context = json_decode($contextJson, true) ?? [];
         $extra = json_decode($extraJson, true) ?? [];
-        
+
         // Extract exception class if present
         $exceptionClass = $this->extractExceptionClass($message);
-        
+
         // Determine tags based on content analysis
         $tags = $this->generateTags($category, $message, $context, $level);
-        
+
         return [
             'content' => $logLine,
             'metadata' => [
@@ -184,13 +185,14 @@ class LogFileLoader
         if (preg_match('/^([A-Za-z\\\\]+(?:Exception|Error)):\s*/', $message, $matches)) {
             return $matches[1];
         }
+
         return null;
     }
 
     private function generateTags(string $category, string $message, array $context, string $level): array
     {
         $tags = [$category, $level];
-        
+
         // Add specific tags based on category
         switch ($category) {
             case 'payment':
@@ -206,8 +208,9 @@ class LogFileLoader
                 if (str_contains($message, 'declined') || str_contains($message, 'CardException')) {
                     $tags[] = 'card-declined';
                 }
+
                 break;
-                
+
             case 'database':
                 if (str_contains($message, 'connection') || str_contains($message, 'Connection')) {
                     $tags[] = 'connection';
@@ -221,8 +224,9 @@ class LogFileLoader
                 if (str_contains($message, 'timeout')) {
                     $tags[] = 'timeout';
                 }
+
                 break;
-                
+
             case 'security':
                 if (str_contains($message, 'authentication') || str_contains($message, 'Authentication')) {
                     $tags[] = 'authentication';
@@ -236,8 +240,9 @@ class LogFileLoader
                 if (str_contains($message, 'XSS') || str_contains($message, 'xss')) {
                     $tags[] = 'xss';
                 }
+
                 break;
-                
+
             case 'application':
                 if (str_contains($message, 'NotFound') || str_contains($message, '404')) {
                     $tags[] = '404';
@@ -248,8 +253,9 @@ class LogFileLoader
                 if (str_contains($message, 'TypeError') || str_contains($message, 'type')) {
                     $tags[] = 'type-error';
                 }
+
                 break;
-                
+
             case 'performance':
                 if (str_contains($message, 'CPU') || str_contains($message, 'cpu')) {
                     $tags[] = 'cpu';
@@ -260,9 +266,10 @@ class LogFileLoader
                 if (str_contains($message, 'timeout') || str_contains($message, 'slow')) {
                     $tags[] = 'slow';
                 }
+
                 break;
         }
-        
+
         return array_unique($tags);
     }
 
@@ -270,6 +277,7 @@ class LogFileLoader
     {
         try {
             $dt = new \DateTime($timestamp);
+
             return $dt->format('Y-m-d\TH:i:s\Z');
         } catch (\Exception $e) {
             return $timestamp;

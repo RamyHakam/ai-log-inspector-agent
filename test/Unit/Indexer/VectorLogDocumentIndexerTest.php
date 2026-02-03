@@ -3,7 +3,6 @@
 namespace Hakam\AiLogInspector\Test\Unit\Indexer;
 
 use Hakam\AiLogInspector\Indexer\LogFileIndexer;
-use Hakam\AiLogInspector\Indexer\LogIndexerInterface;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
@@ -176,7 +175,7 @@ class VectorLogDocumentIndexerTest extends TestCase
     }
 
     /**
-     * Create a mock platform that returns embeddings
+     * Create a mock platform that returns embeddings.
      */
     private function createMockPlatform(): PlatformInterface
     {
@@ -184,7 +183,9 @@ class VectorLogDocumentIndexerTest extends TestCase
             public function invoke(string $model, array|string|object $input, array $options = []): DeferredResult
             {
                 $mockResult = new class($input) implements ResultInterface {
-                    public function __construct(private array|string|object $input) {}
+                    public function __construct(private array|string|object $input)
+                    {
+                    }
 
                     public function getContent(): mixed
                     {
@@ -198,17 +199,17 @@ class VectorLogDocumentIndexerTest extends TestCase
                                 0.2,
                                 0.3,
                                 0.4,
-                                0.5
+                                0.5,
                             ];
                         }
 
-                        return count($embeddings) === 1 ? $embeddings[0] : $embeddings;
+                        return 1 === count($embeddings) ? $embeddings[0] : $embeddings;
                     }
                 };
 
                 return new DeferredResult(
-                    fn() => $mockResult->getContent(),
-                    fn($content) => $mockResult
+                    fn () => $mockResult->getContent(),
+                    fn ($content) => $mockResult
                 );
             }
 

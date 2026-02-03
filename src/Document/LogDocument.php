@@ -2,7 +2,6 @@
 
 namespace Hakam\AiLogInspector\Document;
 
-use DateTimeInterface;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\TextDocument;
 
@@ -44,8 +43,9 @@ readonly class LogDocument implements LogDocumentInterface
             $metadata[$key] = $value;
         }
         if (!isset($this->metadata['timestamp'])) {
-            $metadata['timestamp'] = new \DateTime()->format(DateTimeInterface::ATOM);
+            $metadata['timestamp'] = new \DateTime()->format(\DateTimeInterface::ATOM);
         }
+
         return $metadata;
     }
 }

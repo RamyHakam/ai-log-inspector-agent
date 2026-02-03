@@ -2,9 +2,6 @@
 
 namespace Hakam\AiLogInspector\DTO;
 
-use DateTimeImmutable;
-use DateTimeInterface;
-
 /**
  * Data Transfer Object for log data.
  * Used to pass structured log information to LogDocumentFactory.
@@ -14,7 +11,7 @@ readonly class LogDataDTO
     public function __construct(
         public string $message,
         public string $level = 'INFO',
-        public ?DateTimeInterface $timestamp = null,
+        public ?\DateTimeInterface $timestamp = null,
         public string $channel = 'app',
         public array $context = [],
         public array $extra = [],
@@ -29,18 +26,18 @@ readonly class LogDataDTO
     {
         $timestamp = null;
         if (isset($data['timestamp'])) {
-            $timestamp = $data['timestamp'] instanceof DateTimeInterface
+            $timestamp = $data['timestamp'] instanceof \DateTimeInterface
                 ? $data['timestamp']
-                : new DateTimeImmutable($data['timestamp']);
+                : new \DateTimeImmutable($data['timestamp']);
         }
 
         return new self(
             message: $data['message'] ?? '',
-            level: $data['level']     ?? 'INFO',
+            level: $data['level'] ?? 'INFO',
             timestamp: $timestamp,
-            channel: $data['channel']            ?? 'app',
-            context: $data['context']            ?? [],
-            extra: $data['extra']                ?? [],
+            channel: $data['channel'] ?? 'app',
+            context: $data['context'] ?? [],
+            extra: $data['extra'] ?? [],
             enrichedData: $data['enriched_data'] ?? $data['enrichedData'] ?? []
         );
     }
@@ -48,9 +45,9 @@ readonly class LogDataDTO
     /**
      * Get timestamp with fallback to current time.
      */
-    public function getTimestamp(): DateTimeInterface
+    public function getTimestamp(): \DateTimeInterface
     {
-        return $this->timestamp ?? new DateTimeImmutable();
+        return $this->timestamp ?? new \DateTimeImmutable();
     }
 
     /**
@@ -59,12 +56,12 @@ readonly class LogDataDTO
     public function toArray(): array
     {
         return [
-            'message'       => $this->message,
-            'level'         => $this->level,
-            'timestamp'     => $this->getTimestamp()->format(DateTimeInterface::ATOM),
-            'channel'       => $this->channel,
-            'context'       => $this->context,
-            'extra'         => $this->extra,
+            'message' => $this->message,
+            'level' => $this->level,
+            'timestamp' => $this->getTimestamp()->format(\DateTimeInterface::ATOM),
+            'channel' => $this->channel,
+            'context' => $this->context,
+            'extra' => $this->extra,
             'enriched_data' => $this->enrichedData,
         ];
     }

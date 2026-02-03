@@ -8,7 +8,7 @@ use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Persistent Message Store for Investigation Sessions
+ * Persistent Message Store for Investigation Sessions.
  *
  * Stores conversation history to disk, allowing investigations to be
  * paused and resumed across multiple sessions or application restarts.
@@ -32,7 +32,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
 
     /**
      * @param string $sessionId Unique identifier for this investigation session
-     * @param string $basePath Base directory for storing sessions
+     * @param string $basePath  Base directory for storing sessions
      */
     public function __construct(
         private readonly string $sessionId = Uuid::NAMESPACE_X500,
@@ -42,7 +42,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
     }
 
     /**
-     * Set up the storage directory
+     * Set up the storage directory.
      *
      * @param array<string, mixed> $options Configuration options (unused)
      */
@@ -54,24 +54,24 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
     }
 
     /**
-     * Save messages to the session file
+     * Save messages to the session file.
      *
      * @param MessageBag $messages The messages to persist
      */
     public function save(MessageBag $messages): void
     {
         $filePath = $this->getFilePath();
-        $data     = [
+        $data = [
             'session_id' => $this->sessionId,
             'updated_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-            'messages'   => serialize($messages),
+            'messages' => serialize($messages),
         ];
 
         file_put_contents($filePath, json_encode($data, JSON_PRETTY_PRINT));
     }
 
     /**
-     * Load messages from the session file
+     * Load messages from the session file.
      *
      * @return MessageBag The stored messages (empty bag if none exist)
      */
@@ -93,7 +93,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
     }
 
     /**
-     * Delete the session and all its messages
+     * Delete the session and all its messages.
      */
     public function drop(): void
     {
@@ -105,7 +105,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
     }
 
     /**
-     * Check if this session exists
+     * Check if this session exists.
      *
      * @return bool True if session file exists
      */
@@ -115,7 +115,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
     }
 
     /**
-     * Get the session ID
+     * Get the session ID.
      *
      * @return string The session identifier
      */
@@ -125,7 +125,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
     }
 
     /**
-     * Get session metadata without loading full messages
+     * Get session metadata without loading full messages.
      *
      * @return array<string, mixed>|null Session metadata or null if not found
      */
@@ -142,13 +142,13 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
         return [
             'session_id' => $data['session_id'] ?? $this->sessionId,
             'updated_at' => $data['updated_at'] ?? null,
-            'file_path'  => $filePath,
-            'file_size'  => filesize($filePath),
+            'file_path' => $filePath,
+            'file_size' => filesize($filePath),
         ];
     }
 
     /**
-     * List all available sessions in the storage directory
+     * List all available sessions in the storage directory.
      *
      * @return array<string, array<string, mixed>> Array of session metadata keyed by session ID
      */
@@ -159,17 +159,17 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
         }
 
         $sessions = [];
-        $files    = glob($this->storagePath . '/*.session.json');
+        $files = glob($this->storagePath.'/*.session.json');
 
         foreach ($files as $file) {
-            $data      = json_decode(file_get_contents($file), true);
+            $data = json_decode(file_get_contents($file), true);
             $sessionId = $data['session_id'] ?? basename($file, '.session.json');
 
             $sessions[$sessionId] = [
                 'session_id' => $sessionId,
                 'updated_at' => $data['updated_at'] ?? null,
-                'file_path'  => $file,
-                'file_size'  => filesize($file),
+                'file_path' => $file,
+                'file_size' => filesize($file),
             ];
         }
 
@@ -182,7 +182,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
     }
 
     /**
-     * Get the file path for this session
+     * Get the file path for this session.
      *
      * @return string Full path to the session file
      */
@@ -190,6 +190,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
     {
         // Sanitize session ID for filesystem safety
         $safeId = preg_replace('/[^a-zA-Z0-9_-]/', '_', $this->sessionId);
-        return $this->storagePath . '/' . $safeId . '.session.json';
+
+        return $this->storagePath.'/'.$safeId.'.session.json';
     }
 }

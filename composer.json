@@ -29,6 +29,10 @@
       "Hakam\\AiLogInspector\\": "src/"
     }
   },
+  "scripts": {
+    "test": "phpunit --colors=always",
+    "cs-fix": "dev-tools/vendor/bin/php-cs-fixer fix"
+  },
   "autoload-dev": {
     "psr-4": {
       "Hakam\\AiLogInspector\\Test\\": "test/"

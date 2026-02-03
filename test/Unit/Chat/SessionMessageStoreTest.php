@@ -14,15 +14,14 @@ class SessionMessageStoreTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->testStoragePath = sys_get_temp_dir() . '/log-inspector-test-' . uniqid();
+        $this->testStoragePath = sys_get_temp_dir().'/log-inspector-test-'.uniqid();
         mkdir($this->testStoragePath, 0755, true);
     }
 
     protected function tearDown(): void
     {
-
         if (is_dir($this->testStoragePath)) {
-            $files = glob($this->testStoragePath . '/*');
+            $files = glob($this->testStoragePath.'/*');
             foreach ($files as $file) {
                 if (is_file($file)) {
                     unlink($file);
@@ -51,7 +50,7 @@ class SessionMessageStoreTest extends TestCase
 
     public function testSetupCreatesStorageDirectory(): void
     {
-        $customPath = $this->testStoragePath . '/custom-sessions';
+        $customPath = $this->testStoragePath.'/custom-sessions';
         $store = new SessionMessageStore('test-session', $customPath);
 
         $this->assertDirectoryDoesNotExist($customPath);
@@ -189,12 +188,12 @@ class SessionMessageStoreTest extends TestCase
     public function testListSessionsReturnsAllSessions(): void
     {
         $sessionIds = ['session-1', 'session-2', 'session-3'];
-        
+
         foreach ($sessionIds as $sessionId) {
             $store = new SessionMessageStore($sessionId, $this->testStoragePath);
             $store->setup();
             $store->save(new MessageBag(Message::ofUser("Message for $sessionId")));
-            
+
             // Sleep briefly to ensure different timestamps
             usleep(10000);
         }
@@ -204,7 +203,7 @@ class SessionMessageStoreTest extends TestCase
 
         $this->assertIsArray($sessions);
         $this->assertCount(3, $sessions);
-        
+
         // Check that each session has the required metadata
         foreach ($sessions as $sessionData) {
             $this->assertArrayHasKey('session_id', $sessionData);
@@ -220,9 +219,9 @@ class SessionMessageStoreTest extends TestCase
         $store1 = new SessionMessageStore('session-old', $this->testStoragePath);
         $store1->setup();
         $store1->save(new MessageBag(Message::ofUser('Old message')));
-        
+
         usleep(100000); // 100ms delay
-        
+
         $store2 = new SessionMessageStore('session-new', $this->testStoragePath);
         $store2->setup();
         $store2->save(new MessageBag(Message::ofUser('New message')));
@@ -231,7 +230,7 @@ class SessionMessageStoreTest extends TestCase
         $sessions = $store->listSessions();
 
         $sessionIds = array_keys($sessions);
-        
+
         // Most recent should be first
         $this->assertEquals('session-new', $sessionIds[0]);
         $this->assertEquals('session-old', $sessionIds[1]);
@@ -249,7 +248,7 @@ class SessionMessageStoreTest extends TestCase
 
         // Should not throw exceptions and should create a valid file
         $this->assertTrue($store->exists());
-        
+
         $loadedMessages = $store->load();
         $this->assertCount(1, $loadedMessages->getMessages());
     }
@@ -280,7 +279,7 @@ class SessionMessageStoreTest extends TestCase
     public function testSessionPersistenceAcrossInstances(): void
     {
         $sessionId = 'persistence-test';
-        
+
         // Create first instance and save
         $store1 = new SessionMessageStore($sessionId, $this->testStoragePath);
         $store1->setup();

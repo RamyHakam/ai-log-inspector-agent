@@ -2,8 +2,6 @@
 
 namespace Hakam\AiLogInspector\Document;
 
-use DateTimeImmutable;
-use DateTimeInterface;
 use Hakam\AiLogInspector\DTO\LogDataDTO;
 
 final class LogDocumentFactory
@@ -12,13 +10,12 @@ final class LogDocumentFactory
      * Create from DTO or array with rich semantic content for vector search.
      *
      * @param LogDataDTO|array $data Log data as DTO or array
-     * @return LogDocument
      */
     public static function createFromData(LogDataDTO|array $data): LogDocument
     {
-        $dto             = $data instanceof LogDataDTO ? $data : LogDataDTO::fromArray($data);
+        $dto = $data instanceof LogDataDTO ? $data : LogDataDTO::fromArray($data);
         $semanticContent = self::createSemanticContent($dto);
-        $metadata        = self::createMetadataFromDTO($dto);
+        $metadata = self::createMetadataFromDTO($dto);
 
         return new LogDocument(
             content: $semanticContent,
@@ -26,13 +23,13 @@ final class LogDocumentFactory
         );
     }
 
-    public static function createFromString(String $stringText): LogDocument
+    public static function createFromString(string $stringText): LogDocument
     {
         return new LogDocument(
             content: $stringText,
             rowMetadata: [
-                'created_at'   => (new DateTimeImmutable())->format(DateTimeInterface::ATOM),
-                'source'       => 'string',
+                'created_at' => (new \DateTimeImmutable())->format(\DateTimeInterface::ATOM),
+                'source' => 'string',
                 'string_query' => $stringText,
             ]
         );
@@ -43,6 +40,7 @@ final class LogDocumentFactory
      * This method generates human-readable text that captures the essence of the log entry.
      *
      * @param LogDataDTO|array $data Log data as DTO or array
+     *
      * @return string Rich semantic content for vectorization
      */
     public static function createSemanticContent(LogDataDTO|array $data): string
@@ -54,7 +52,7 @@ final class LogDocumentFactory
         $parts[] = "Log Message: {$dto->message}";
         $parts[] = "Severity: {$dto->level}";
         $parts[] = "Channel: {$dto->channel}";
-        $parts[] = "Timestamp: " . $dto->getTimestamp()->format('Y-m-d H:i:s T');
+        $parts[] = 'Timestamp: '.$dto->getTimestamp()->format('Y-m-d H:i:s T');
 
         // HTTP Request context
         $requestParts = [];
@@ -71,7 +69,7 @@ final class LogDocumentFactory
             $requestParts[] = "Status: {$dto->context['status_code']}";
         }
         if (!empty($requestParts)) {
-            $parts[] = "HTTP Request: " . implode(' ', $requestParts);
+            $parts[] = 'HTTP Request: '.implode(' ', $requestParts);
         }
 
         // Request identification
@@ -85,11 +83,11 @@ final class LogDocumentFactory
             $userParts[] = "User ID: {$dto->context['user_id']}";
         }
         if (isset($dto->context['user_name']) || isset($dto->context['username'])) {
-            $userName    = $dto->context['user_name'] ?? $dto->context['username'];
+            $userName = $dto->context['user_name'] ?? $dto->context['username'];
             $userParts[] = "User: {$userName}";
         }
         if (isset($dto->context['user_roles']) && is_array($dto->context['user_roles'])) {
-            $userParts[] = "Roles: " . implode(', ', $dto->context['user_roles']);
+            $userParts[] = 'Roles: '.implode(', ', $dto->context['user_roles']);
         }
         if (!empty($userParts)) {
             $parts[] = implode(' | ', $userParts);
@@ -104,16 +102,16 @@ final class LogDocumentFactory
             }
 
             if (isset($dto->context['file']) && isset($dto->context['line'])) {
-                $file             = basename($dto->context['file']);
+                $file = basename($dto->context['file']);
                 $exceptionParts[] = "Location: {$file}:{$dto->context['line']}";
             }
 
             if (isset($dto->context['stack_trace'])) {
-                $exceptionParts[] = "Has stack trace";
+                $exceptionParts[] = 'Has stack trace';
             }
 
             if (isset($dto->context['previous_exception'])) {
-                $exceptionParts[] = "Has previous exception";
+                $exceptionParts[] = 'Has previous exception';
             }
 
             $parts[] = implode(' | ', $exceptionParts);
@@ -121,7 +119,7 @@ final class LogDocumentFactory
 
         // Database query context
         if (isset($dto->context['query'])) {
-            $queryInfo = "Database Query";
+            $queryInfo = 'Database Query';
             if (isset($dto->context['query_time'])) {
                 $queryInfo .= " (Duration: {$dto->context['query_time']}ms)";
             }
@@ -134,7 +132,7 @@ final class LogDocumentFactory
         // Performance metrics
         $perfParts = [];
         if (isset($dto->context['duration']) || isset($dto->context['execution_time'])) {
-            $duration    = $dto->context['duration'] ?? $dto->context['execution_time'];
+            $duration = $dto->context['duration'] ?? $dto->context['execution_time'];
             $perfParts[] = "Duration: {$duration}ms";
         }
         if (isset($dto->context['memory_usage'])) {
@@ -144,24 +142,24 @@ final class LogDocumentFactory
             $perfParts[] = "CPU: {$dto->context['cpu_usage']}%";
         }
         if (!empty($perfParts)) {
-            $parts[] = "Performance: " . implode(' | ', $perfParts);
+            $parts[] = 'Performance: '.implode(' | ', $perfParts);
         }
 
         // Business domain context from enriched data
         foreach ($dto->enrichedData as $key => $value) {
-            if (is_scalar($value) && $value !== '' && $value !== null) {
-                $label   = ucwords(str_replace(['_', '-'], ' ', $key));
+            if (is_scalar($value) && '' !== $value && null !== $value) {
+                $label = ucwords(str_replace(['_', '-'], ' ', $key));
                 $parts[] = "{$label}: {$value}";
             } elseif (is_array($value) && !empty($value)) {
-                $label   = ucwords(str_replace(['_', '-'], ' ', $key));
-                $parts[] = "{$label}: " . implode(', ', array_filter($value, 'is_scalar'));
+                $label = ucwords(str_replace(['_', '-'], ' ', $key));
+                $parts[] = "{$label}: ".implode(', ', array_filter($value, 'is_scalar'));
             }
         }
 
         // Extra metadata (non-redundant)
         foreach ($dto->extra as $key => $value) {
-            if (is_scalar($value) && $value !== '' && $value !== null && !isset($dto->context[$key])) {
-                $label   = ucwords(str_replace(['_', '-'], ' ', $key));
+            if (is_scalar($value) && '' !== $value && null !== $value && !isset($dto->context[$key])) {
+                $label = ucwords(str_replace(['_', '-'], ' ', $key));
                 $parts[] = "{$label}: {$value}";
             }
         }
@@ -172,15 +170,12 @@ final class LogDocumentFactory
 
     /**
      * Create metadata from LogDataDTO.
-     *
-     * @param LogDataDTO $dto
-     * @return array
      */
     private static function createMetadataFromDTO(LogDataDTO $dto): array
     {
-        $timestamp    = $dto->getTimestamp();
-        $context      = $dto->context;
-        $extra        = $dto->extra;
+        $timestamp = $dto->getTimestamp();
+        $context = $dto->context;
+        $extra = $dto->extra;
         $enrichedData = $dto->enrichedData;
 
         // Merge all context data
@@ -188,27 +183,27 @@ final class LogDocumentFactory
 
         // Base metadata with time-based features
         $metadata = [
-            'created_at' => new DateTimeImmutable()->format(DateTimeInterface::ATOM),
-            'timestamp'  => $timestamp->format(DateTimeInterface::ATOM),
-            'level'      => strtoupper($dto->level),
-            'channel'    => $dto->channel,
-            'message'    => $dto->message,
+            'created_at' => new \DateTimeImmutable()->format(\DateTimeInterface::ATOM),
+            'timestamp' => $timestamp->format(\DateTimeInterface::ATOM),
+            'level' => strtoupper($dto->level),
+            'channel' => $dto->channel,
+            'message' => $dto->message,
 
             // Time-based features for temporal analysis
-            'hour'        => (int) $timestamp->format('H'),
+            'hour' => (int) $timestamp->format('H'),
             'day_of_week' => (int) $timestamp->format('N'),
-            'day_name'    => $timestamp->format('l'),
-            'is_weekend'  => in_array($timestamp->format('N'), [6, 7], true),
-            'month'       => (int) $timestamp->format('m'),
-            'year'        => (int) $timestamp->format('Y'),
+            'day_name' => $timestamp->format('l'),
+            'is_weekend' => in_array($timestamp->format('N'), [6, 7], true),
+            'month' => (int) $timestamp->format('m'),
+            'year' => (int) $timestamp->format('Y'),
 
             // Boolean flags for quick filtering
-            'has_exception'        => isset($context['exception_class']),
-            'has_stack_trace'      => isset($context['stack_trace']),
-            'has_request_context'  => isset($context['request_id']) || isset($context['url']),
-            'has_user_context'     => isset($context['user_id'])    || isset($context['username']),
-            'has_performance_data' => isset($context['duration'])   || isset($context['memory_usage']),
-            'has_database_query'   => isset($context['query']),
+            'has_exception' => isset($context['exception_class']),
+            'has_stack_trace' => isset($context['stack_trace']),
+            'has_request_context' => isset($context['request_id']) || isset($context['url']),
+            'has_user_context' => isset($context['user_id']) || isset($context['username']),
+            'has_performance_data' => isset($context['duration']) || isset($context['memory_usage']),
+            'has_database_query' => isset($context['query']),
         ];
 
         // Merge with all context data

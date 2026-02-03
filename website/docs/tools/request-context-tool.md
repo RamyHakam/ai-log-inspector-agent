@@ -200,8 +200,8 @@ use Hakam\AiLogInspector\Tool\RequestContextTool;
 $agent = new LogInspectorAgent(
     $platform,
     [
-        new LogSearchTool($store, $vectorizer, $platform),
-        new RequestContextTool($store, $vectorizer, $platform)
+        new LogSearchTool($store, $retriever, $platform),
+        new RequestContextTool($store, $retriever, $platform)
     ]
 );
 

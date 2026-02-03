@@ -18,12 +18,12 @@ use Symfony\AI\Store\Document\LoaderInterface;
 class LogFileIndexer extends AbstractLogIndexer
 {
     /**
-     * @param PlatformInterface $embeddingPlatform The AI platform for generating embeddings
-     * @param string $model The embedding model to use (e.g., 'text-embedding-3-small')
-     * @param LoaderInterface $loader The document loader for loading log files from disk
-     * @param VectorLogStoreInterface $logStore The vector store for storing embeddings
-     * @param int $chunkSize Size of text chunks for splitting (default: 500)
-     * @param int $chunkOverlap Overlap between chunks to maintain context (default: 100)
+     * @param PlatformInterface       $embeddingPlatform The AI platform for generating embeddings
+     * @param string                  $model             The embedding model to use (e.g., 'text-embedding-3-small')
+     * @param LoaderInterface         $loader            The document loader for loading log files from disk
+     * @param VectorLogStoreInterface $logStore          The vector store for storing embeddings
+     * @param int                     $chunkSize         Size of text chunks for splitting (default: 500)
+     * @param int                     $chunkOverlap      Overlap between chunks to maintain context (default: 100)
      */
     public function __construct(
         PlatformInterface $embeddingPlatform,
@@ -47,7 +47,7 @@ class LogFileIndexer extends AbstractLogIndexer
      * Index a specific log file.
      *
      * @param string $logFileName The log file name or path
-     * @param array $options Additional indexing options
+     * @param array  $options     Additional indexing options
      */
     public function indexLogFile(string $logFileName, array $options = []): void
     {
@@ -59,7 +59,7 @@ class LogFileIndexer extends AbstractLogIndexer
      * Index multiple log files.
      *
      * @param array<string> $logFileNames Array of log file names or paths
-     * @param array $options Additional indexing options
+     * @param array         $options      Additional indexing options
      */
     public function indexLogFiles(array $logFileNames, array $options = []): void
     {

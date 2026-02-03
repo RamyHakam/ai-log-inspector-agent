@@ -142,7 +142,7 @@ use Hakam\AiLogInspector\Agent\LogInspectorAgent;
 use Hakam\AiLogInspector\Platform\LogDocumentPlatformFactory;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
-use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
+use Hakam\AiLogInspector\Retriever\LogRetriever;
 use Symfony\AI\Store\Bridge\Local\InMemoryStore;
 
 echo "🤖 Testing AI Log Inspector Agent Installation\n\n";
@@ -154,30 +154,31 @@ try {
         'api_key' => $_ENV['OPENAI_API_KEY'],
         'model' => ['name' => 'gpt-4o-mini']
     ]);
-    
+
     echo "✅ Platform created successfully\n";
-    
+
     // Create vector store
     $store = new VectorLogDocumentStore(new InMemoryStore());
     echo "✅ Vector store created successfully\n";
-    
-    // Create vectorizer
-    $vectorizer = new LogDocumentVectorizer(
-        $platform->getPlatform(),
-        $platform->getModel()
+
+    // Create retriever
+    $retriever = new LogRetriever(
+        embeddingPlatform: $platform->getPlatform(),
+        model: 'text-embedding-3-small',
+        logStore: $store
     );
-    echo "✅ Vectorizer created successfully\n";
-    
+    echo "✅ Retriever created successfully\n";
+
     // Create tool
-    $tool = new LogSearchTool($store, $vectorizer, $platform);
+    $tool = new LogSearchTool($store, $retriever, $platform);
     echo "✅ Tool created successfully\n";
-    
+
     // Create agent
     $agent = new LogInspectorAgent($platform, [$tool]);
     echo "✅ Agent created successfully\n";
-    
+
     echo "\n🎉 Installation verified! You're ready to use the AI Log Inspector Agent.\n";
-    
+
 } catch (\Exception $e) {
     echo "❌ Error: " . $e->getMessage() . "\n";
     echo "\nStack trace:\n" . $e->getTraceAsString() . "\n";
@@ -198,7 +199,7 @@ Expected output:
 
 ✅ Platform created successfully
 ✅ Vector store created successfully
-✅ Vectorizer created successfully
+✅ Retriever created successfully
 ✅ Tool created successfully
 ✅ Agent created successfully
 

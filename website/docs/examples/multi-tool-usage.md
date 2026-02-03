@@ -25,7 +25,7 @@ use Hakam\AiLogInspector\Platform\LogDocumentPlatformFactory;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Tool\RequestContextTool;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
-use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
+use Hakam\AiLogInspector\Retriever\LogRetriever;
 use Symfony\AI\Store\Bridge\Local\InMemoryStore;
 
 // Setup platform
@@ -37,14 +37,15 @@ $platform = LogDocumentPlatformFactory::create([
 
 // Create components
 $store = new VectorLogDocumentStore(new InMemoryStore());
-$vectorizer = new LogDocumentVectorizer(
-    $platform->getPlatform(),
-    $platform->getModel()
+$retriever = new LogRetriever(
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    logStore: $store
 );
 
 // Create BOTH tools
-$logSearchTool = new LogSearchTool($store, $vectorizer, $platform);
-$requestContextTool = new RequestContextTool($store, $vectorizer, $platform);
+$logSearchTool = new LogSearchTool($store, $retriever, $platform);
+$requestContextTool = new RequestContextTool($store, $retriever, $platform);
 
 // Create agent with multiple tools
 $agent = new LogInspectorAgent(

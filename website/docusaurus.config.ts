@@ -75,6 +75,11 @@ const config: Config = {
           label: 'Documentation',
         },
         {
+          to: '/playground',
+          label: '🎮 Playground',
+          position: 'left',
+        },
+        {
           type: 'docSidebar',
           sidebarId: 'docsSidebar',
           position: 'left',
@@ -121,6 +126,10 @@ const config: Config = {
         {
           title: 'Resources',
           items: [
+            {
+              label: 'Playground',
+              to: '/playground',
+            },
             {
               label: 'Examples',
               to: '/docs/examples/basic-usage',
