@@ -11,7 +11,7 @@ use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Result\ResultInterface;
 
-final  class LogInspectorAgent implements AgentInterface
+final class LogInspectorAgent implements AgentInterface
 {
     private Agent $agent;
 
@@ -20,8 +20,8 @@ final  class LogInspectorAgent implements AgentInterface
         private readonly  iterable $tools,
         private ?string $systemPrompt = null,
     ) {
-        $toolbox = new Toolbox($this->tools);
-        $processor = new AgentProcessor($toolbox);
+        $toolbox     = new Toolbox($this->tools);
+        $processor   = new AgentProcessor($toolbox);
         $this->agent = new Agent(
             $this->platform->getPlatform(),
             $this->platform->getModel()->getName(),
@@ -42,7 +42,7 @@ final  class LogInspectorAgent implements AgentInterface
         return $this->agent->getName();
     }
 
-    public function ask(string $question) : ResultInterface
+    public function ask(string $question): ResultInterface
     {
         $messages = new MessageBag(
             Message::forSystem($this->systemPrompt),

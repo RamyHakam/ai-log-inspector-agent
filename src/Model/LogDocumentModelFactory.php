@@ -16,12 +16,12 @@ class LogDocumentModelFactory
             );
             return LogDocumentModel::fromModel($ollamaModel);
         }
-        
+
         // For other providers, use generic model
         return new LogDocumentModel(
             $modelConfig['name'],
             $modelConfig['capabilities'] ?? [],
-            $modelConfig['options'] ?? []
+            $modelConfig['options']      ?? []
         );
     }
 }

@@ -7,12 +7,11 @@ use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\AI\Store\InMemory\Store;
 use Symfony\AI\Store\StoreInterface;
 
-final readonly class VectorLogDocumentStore implements VectorLogStoreInterface,StoreInterface
+final readonly class VectorLogDocumentStore implements VectorLogStoreInterface, StoreInterface
 {
     public function __construct(
         private StoreInterface $aiStore = new Store()
-    )
-    {
+    ) {
     }
 
     /**

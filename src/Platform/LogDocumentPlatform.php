@@ -16,30 +16,36 @@ class LogDocumentPlatform implements LogDocumentPlatformInterface
 {
     public function __construct(
         private readonly PlatformInterface $platform,
-        private readonly LogDocumentModelInterface $model,)
-    {}
+        private readonly LogDocumentModelInterface $model,
+    ) {
+    }
 
     public function getPlatform(): PlatformInterface
     {
         return $this->platform;
     }
 
-    public function __invoke( $query, array $options = []): ResultInterface
+    public function __invoke($query, array $options = []): ResultInterface
     {
-        // Convert string queries to MessageBag for Ollama compatibility
-        if (is_string($query) && $this->model->getModel() instanceof Ollama) {
+        // Ensure options is always an array
+        if (!is_array($options)) {
+            $options = [];
+        }
+
+        // Convert string queries to MessageBag for all platforms
+        if (is_string($query)) {
             $content = new Text($query);
             $message = new UserMessage($content);
-            $query = new MessageBag($message);
+            $query   = new MessageBag($message);
         }
-        
+
         try {
             $resultPromise = $this->platform->invoke($this->model->getModel()->getName(), $query, $options);
             return $resultPromise->getResult();
         } catch (ClientException $e) {
             // Handle common Ollama API compatibility issues
             $errorMessage = $e->getMessage();
-            
+
             if (str_contains($errorMessage, '404') && str_contains($errorMessage, '/api/show')) {
                 throw new \RuntimeException(
                     'Ollama API endpoint "/api/show" not found. This indicates an incompatible Ollama version. ' .
@@ -49,7 +55,7 @@ class LogDocumentPlatform implements LogDocumentPlatformInterface
                     $e
                 );
             }
-            
+
             if (str_contains($errorMessage, '404')) {
                 throw new \RuntimeException(
                     'Ollama API endpoint not found. Please ensure Ollama is running on the correct host and the API is accessible.',
@@ -65,5 +71,13 @@ class LogDocumentPlatform implements LogDocumentPlatformInterface
     public function getModel(): Model
     {
         return $this->model->getModel();
+    }
+
+    /**
+     * Check if the platform/model supports embeddings for vectorization.
+     */
+    public function supportsEmbedding(): bool
+    {
+        return $this->model->supportsEmbedding();
     }
 }

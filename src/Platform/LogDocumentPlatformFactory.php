@@ -13,21 +13,19 @@ final class LogDocumentPlatformFactory
 {
     public static function create(array $config): LogDocumentPlatformInterface
     {
-        $provider = $config['provider'];
+        $provider      = $config['provider'];
         $clientOptions = $config['client_options'] ?? [];
-        
+
         $httpClient = null;
         if (!empty($clientOptions)) {
             $httpClient = HttpClient::create($clientOptions);
         }
-        
-        $platform =  match($provider) {
-            'openai' => OpenAiPlatformFactory::create($config['api_key'], $httpClient),
-            'anthropic' =>
-            AnthropicPlatformFactory::create($config['api_key'], $httpClient),
-            'vertex_ai' =>
-            VertexAiPlatformFactory::create($config['location'], $config['project_id'], $httpClient),
-            'ollama' => OllamaPlatformFactory::create($config['host'], $httpClient),
+
+        $platform = match($provider) {
+            'openai'    => OpenAiPlatformFactory::create($config['api_key'], $httpClient),
+            'anthropic' => AnthropicPlatformFactory::create($config['api_key'], $httpClient),
+            'vertex_ai' => VertexAiPlatformFactory::create($config['location'], $config['project_id'], $httpClient),
+            'ollama'    => OllamaPlatformFactory::create($config['host'], $httpClient),
             // ... other providers will be added in the future
         };
         $model = LogDocumentModelFactory::create($config['model'], $provider);
