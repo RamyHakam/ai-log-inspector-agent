@@ -7,12 +7,12 @@ interface LogDocumentModelInterface
     public function getModel();
 
     /**
-     * Check if this model supports embeddings/vectorization
+     * Check if this model supports embeddings/vectorization.
      */
     public function supportsEmbedding(): bool;
 
     /**
-     * Get model capabilities
+     * Get model capabilities.
      */
     public function getCapabilities(): array;
 }

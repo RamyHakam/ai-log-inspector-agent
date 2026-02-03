@@ -42,6 +42,7 @@ const sidebars: SidebarsConfig = {
       collapsed: true,
       items: [
         'core-concepts/architecture',
+        'core-concepts/log-processor-service',
       ],
     },
     {

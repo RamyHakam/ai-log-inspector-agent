@@ -3,9 +3,9 @@
 namespace Hakam\AiLogInspector\Test\Unit\Tool;
 
 use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
+use Hakam\AiLogInspector\Retriever\LogRetrieverInterface;
 use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
-use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Vector\Vector;
@@ -17,36 +17,37 @@ class LogSearchToolTest extends TestCase
 {
     private VectorLogStoreInterface $store;
     private LogSearchTool $tool;
-    private LogDocumentVectorizerInterface $vectorizer;
+    private LogRetrieverInterface $retriever;
     private LogDocumentPlatformInterface $platform;
 
     protected function setUp(): void
     {
         $this->store = $this->createMock(VectorLogStoreInterface::class);
-        $this->vectorizer = $this->createMock(LogDocumentVectorizerInterface::class);
+        $this->retriever = $this->createMock(LogRetrieverInterface::class);
         $this->platform = $this->createMock(LogDocumentPlatformInterface::class);
 
-        // By default, platform does NOT support embeddings (like chat models)
-        $this->platform->method('supportsEmbedding')->willReturn(false);
+        // By default, retriever fails so keyword search is used
+        $this->retriever->method('retrieve')
+            ->willThrowException(new \RuntimeException('Retrieval not supported'));
 
         $this->tool = new LogSearchTool(
             $this->store,
-            $this->vectorizer,
+            $this->retriever,
             $this->platform
         );
     }
 
     /**
-     * Helper to create a tool with embedding support enabled
+     * Helper to create a tool with working retriever (semantic search).
      */
-    private function createToolWithEmbeddingSupport(): void
+    private function createToolWithWorkingRetriever(): void
     {
+        $this->retriever = $this->createMock(LogRetrieverInterface::class);
         $this->platform = $this->createMock(LogDocumentPlatformInterface::class);
-        $this->platform->method('supportsEmbedding')->willReturn(true);
 
         $this->tool = new LogSearchTool(
             $this->store,
-            $this->vectorizer,
+            $this->retriever,
             $this->platform
         );
     }
@@ -70,7 +71,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test keyword-based search with AI analysis (when platform does NOT support embeddings)
+     * Test keyword-based search with AI analysis (when retriever fails).
      */
     public function testKeywordSearchWithAIAnalysis(): void
     {
@@ -97,7 +98,7 @@ class LogSearchToolTest extends TestCase
             'level' => 'error',
             'category' => 'payment',
             'source' => 'payment-service',
-            'tags' => ['checkout', 'payment']
+            'tags' => ['checkout', 'payment'],
         ]);
 
         $resultDocument = new VectorDocument(
@@ -123,29 +124,17 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test semantic search when platform DOES support embeddings
+     * Test semantic search when retriever works.
      */
-    public function testSemanticSearchWithEmbeddingSupport(): void
+    public function testSemanticSearchWithWorkingRetriever(): void
     {
-        $this->createToolWithEmbeddingSupport();
+        $this->createToolWithWorkingRetriever();
 
         $query = 'payment errors';
         $logContent = 'Payment gateway timeout';
         $analysisResult = 'Payment gateway timeout caused the error';
 
         $vector = new Vector([0.1, 0.2, 0.3]);
-        $vectorDocument = new VectorDocument(
-            Uuid::v4(),
-            $vector,
-            new Metadata([]),
-            null
-        );
-
-        // Vectorizer is called twice: capability test + actual search
-        $this->vectorizer
-            ->expects($this->exactly(2))
-            ->method('vectorizeLogTextDocuments')
-            ->willReturn([$vectorDocument]);
 
         // Mock platform analysis
         $platformResult = $this->createMock(ResultInterface::class);
@@ -163,7 +152,7 @@ class LogSearchToolTest extends TestCase
             'timestamp' => '2026-01-01 14:23:45',
             'level' => 'error',
             'source' => 'payment-service',
-            'tags' => ['checkout', 'payment']
+            'tags' => ['checkout', 'payment'],
         ]);
 
         $resultDocument = new VectorDocument(
@@ -173,10 +162,11 @@ class LogSearchToolTest extends TestCase
             0.1
         );
 
-        $this->store
+        // Retriever is called for semantic search
+        $this->retriever
             ->expects($this->once())
-            ->method('queryForVector')
-            ->with($vector, ['maxItems' => 15])
+            ->method('retrieve')
+            ->with($query, ['maxItems' => 15])
             ->willReturn([$resultDocument]);
 
         $result = $this->tool->__invoke($query);
@@ -187,7 +177,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test that AI analysis failure falls back to pattern matching
+     * Test that AI analysis failure falls back to pattern matching.
      */
     public function testAIAnalysisFailureFallsBackToPatternMatching(): void
     {
@@ -207,7 +197,7 @@ class LogSearchToolTest extends TestCase
             'timestamp' => '2026-01-01 14:23:45',
             'level' => 'error',
             'category' => 'database',
-            'source' => 'database-service'
+            'source' => 'database-service',
         ]);
 
         $resultDocument = new VectorDocument(
@@ -232,7 +222,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test search with no matching results
+     * Test search with no matching results.
      */
     public function testSearchWithNoResults(): void
     {
@@ -255,7 +245,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test multiple log entries with AI analysis
+     * Test multiple log entries with AI analysis.
      */
     public function testMultipleLogEntriesWithAIAnalysis(): void
     {
@@ -272,7 +262,7 @@ class LogSearchToolTest extends TestCase
 
         // Create multiple documents with payment-related content
         $documents = [];
-        for ($i = 1; $i <= 3; $i++) {
+        for ($i = 1; $i <= 3; ++$i) {
             $metadata = new Metadata([
                 'log_id' => "pay_00$i",
                 'content' => "Payment gateway timeout error $i",
@@ -281,7 +271,7 @@ class LogSearchToolTest extends TestCase
                 'level' => 'error',
                 'category' => 'payment',
                 'source' => 'payment-service',
-                'tags' => []
+                'tags' => [],
             ]);
 
             $documents[] = new VectorDocument(
@@ -306,7 +296,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test handling of documents with missing metadata fields
+     * Test handling of documents with missing metadata fields.
      */
     public function testDocumentWithMinimalMetadata(): void
     {
@@ -324,7 +314,7 @@ class LogSearchToolTest extends TestCase
         // Document with minimal metadata but matching content
         $uuid = Uuid::v4();
         $metadata = new Metadata([
-            'content' => 'test query related content'
+            'content' => 'test query related content',
         ]);
 
         $resultDocument = new VectorDocument(
@@ -354,7 +344,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test that tags field handles string values (converts to array)
+     * Test that tags field handles string values (converts to array).
      */
     public function testTagsStringConvertedToArray(): void
     {
@@ -375,7 +365,7 @@ class LogSearchToolTest extends TestCase
             'content' => 'Payment processing failed',
             'message' => 'Payment processing failed',
             'category' => 'payment',
-            'tags' => 'payment-tag' // String instead of array
+            'tags' => 'payment-tag', // String instead of array
         ]);
 
         $resultDocument = new VectorDocument(
@@ -399,7 +389,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test store exception handling
+     * Test store exception handling.
      */
     public function testStoreExceptionHandling(): void
     {
@@ -418,26 +408,26 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test vectorizer exception falls back to keyword search (with embedding support)
+     * Test retriever exception falls back to keyword search.
      */
-    public function testVectorizerExceptionFallsBackToKeywordSearch(): void
+    public function testRetrieverExceptionFallsBackToKeywordSearch(): void
     {
-        $this->createToolWithEmbeddingSupport();
+        $this->createToolWithWorkingRetriever();
 
         $query = 'test query';
 
-        // Vectorizer fails on capability test
-        $this->vectorizer
+        // Retriever fails
+        $this->retriever
             ->expects($this->once())
-            ->method('vectorizeLogTextDocuments')
-            ->willThrowException(new \Exception('Vectorization failed'));
+            ->method('retrieve')
+            ->willThrowException(new \Exception('Retrieval failed'));
 
         // Should fall back to keyword search
         $metadata = new Metadata([
             'log_id' => 'log_001',
             'content' => 'test query content',
             'message' => 'test query content',
-            'category' => 'general'
+            'category' => 'general',
         ]);
 
         $resultDocument = new VectorDocument(
@@ -468,7 +458,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test all pattern matching fallback patterns
+     * Test all pattern matching fallback patterns.
      */
     public function testPatternMatchingFallbackPatterns(): void
     {
@@ -482,7 +472,7 @@ class LogSearchToolTest extends TestCase
             'Disk full error' => 'Disk space exhausted',
             'Invalid request format' => 'Invalid request format or parameters',
             'Service unavailable' => 'External service unavailable',
-            '500 internal server error' => 'Internal server error occurred'
+            '500 internal server error' => 'Internal server error occurred',
         ];
 
         foreach ($patterns as $logContent => $expectedReason) {
@@ -501,7 +491,7 @@ class LogSearchToolTest extends TestCase
                 'log_id' => 'test_log',
                 'content' => $logContent,
                 'message' => $logContent,
-                'category' => 'general'
+                'category' => 'general',
             ]);
 
             $resultDocument = new VectorDocument(
@@ -524,7 +514,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test semantic keyword matching in keyword search
+     * Test semantic keyword matching in keyword search.
      */
     public function testSemanticKeywordMatching(): void
     {
@@ -544,7 +534,7 @@ class LogSearchToolTest extends TestCase
             'log_id' => 'pay_001',
             'content' => 'Stripe API connection timeout',
             'message' => 'Stripe API connection timeout',
-            'category' => 'payment'
+            'category' => 'payment',
         ]);
 
         $resultDocument = new VectorDocument(
@@ -567,7 +557,7 @@ class LogSearchToolTest extends TestCase
     }
 
     /**
-     * Test category-based matching in keyword search
+     * Test category-based matching in keyword search.
      */
     public function testCategoryBasedMatching(): void
     {
@@ -587,7 +577,7 @@ class LogSearchToolTest extends TestCase
             'log_id' => 'sec_001',
             'content' => 'Authentication attempt from unknown IP',
             'message' => 'Authentication attempt from unknown IP',
-            'category' => 'security'
+            'category' => 'security',
         ]);
 
         $resultDocument = new VectorDocument(

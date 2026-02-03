@@ -15,7 +15,7 @@ use Hakam\AiLogInspector\Agent\LogInspectorAgent;
 use Hakam\AiLogInspector\Platform\LogDocumentPlatformFactory;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
-use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
+use Hakam\AiLogInspector\Retriever\LogRetriever;
 use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 use Symfony\AI\Store\InMemory\Store as InMemoryStore;
@@ -29,11 +29,12 @@ $platform = LogDocumentPlatformFactory::create([
 
 // 2. Create components
 $store = new VectorLogDocumentStore(new InMemoryStore());
-$vectorizer = new LogDocumentVectorizer(
-    $platform->getPlatform(),
-    'text-embedding-3-small'
+$retriever = new LogRetriever(
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    logStore: $store
 );
-$tool = new LogSearchTool($store, $vectorizer, $platform);
+$tool = new LogSearchTool($store, $retriever, $platform);
 
 // 3. Create agent
 $agent = new LogInspectorAgent($platform, [$tool]);

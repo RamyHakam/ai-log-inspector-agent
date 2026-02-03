@@ -17,9 +17,9 @@ class MockSearchTool
                     'id' => 'mock_log_1',
                     'content' => "Mock log content for query: $query",
                     'level' => 'info',
-                    'source' => 'test'
-                ]
-            ]
+                    'source' => 'test',
+                ],
+            ],
         ];
     }
 }

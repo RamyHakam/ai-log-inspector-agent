@@ -15,16 +15,16 @@ class CachedLogsDocumentLoaderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Create temporary cache directory for tests
-        $this->testCacheDir = sys_get_temp_dir() . '/cached-logs-loader-test-' . uniqid();
+        $this->testCacheDir = sys_get_temp_dir().'/cached-logs-loader-test-'.uniqid();
         mkdir($this->testCacheDir, 0777, true);
     }
 
     protected function tearDown(): void
     {
         parent::tearDown();
-        
+
         // Clean up test cache directory
         $this->cleanupTestDirectory();
     }
@@ -32,7 +32,7 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testConstructorWithValidDirectory(): void
     {
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
-        
+
         $this->assertInstanceOf(CachedLogsDocumentLoader::class, $loader);
         $this->assertEquals($this->testCacheDir, $loader->getCacheDir());
     }
@@ -49,8 +49,8 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testConstructorNormalizesDirectoryPath(): void
     {
         // Create loader with trailing slash
-        $loader = new CachedLogsDocumentLoader($this->testCacheDir . '/');
-        
+        $loader = new CachedLogsDocumentLoader($this->testCacheDir.'/');
+
         // Should remove trailing slash
         $this->assertEquals($this->testCacheDir, $loader->getCacheDir());
     }
@@ -62,7 +62,7 @@ class CachedLogsDocumentLoaderTest extends TestCase
         $logContent = "[2025-09-09 10:00:00] app.ERROR: Test error message\n";
         $logContent .= "[2025-09-09 10:01:00] app.WARNING: Test warning message\n";
 
-        file_put_contents($this->testCacheDir . '/' . $logFile, $logContent);
+        file_put_contents($this->testCacheDir.'/'.$logFile, $logContent);
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
         $documents = iterator_to_array($loader->load($logFile), false);
@@ -86,16 +86,16 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testLoadAllLogFiles(): void
     {
         // Create multiple log files
-        file_put_contents($this->testCacheDir . '/app1.log', 'Log content 1');
-        file_put_contents($this->testCacheDir . '/app2.log', 'Log content 2');
-        file_put_contents($this->testCacheDir . '/app3.log', 'Log content 3');
+        file_put_contents($this->testCacheDir.'/app1.log', 'Log content 1');
+        file_put_contents($this->testCacheDir.'/app2.log', 'Log content 2');
+        file_put_contents($this->testCacheDir.'/app3.log', 'Log content 3');
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
         $documents = iterator_to_array($loader->load(), false);
 
         // Should load all 3 log files
         $this->assertCount(3, $documents);
-        
+
         foreach ($documents as $document) {
             $this->assertInstanceOf(TextDocument::class, $document);
         }
@@ -114,9 +114,9 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testLoadIgnoresNonLogFiles(): void
     {
         // Create log files and non-log files
-        file_put_contents($this->testCacheDir . '/app.log', 'Log content');
-        file_put_contents($this->testCacheDir . '/readme.txt', 'Not a log');
-        file_put_contents($this->testCacheDir . '/config.json', '{}');
+        file_put_contents($this->testCacheDir.'/app.log', 'Log content');
+        file_put_contents($this->testCacheDir.'/readme.txt', 'Not a log');
+        file_put_contents($this->testCacheDir.'/config.json', '{}');
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
         $documents = iterator_to_array($loader->load(), false);
@@ -128,11 +128,11 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testLoadWithAbsolutePath(): void
     {
         $logFile = 'absolute-path-test.log';
-        $absolutePath = $this->testCacheDir . '/' . $logFile;
+        $absolutePath = $this->testCacheDir.'/'.$logFile;
         file_put_contents($absolutePath, 'Absolute path test content');
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
-        
+
         // Should work with absolute path
         $documents = iterator_to_array($loader->load($absolutePath), false);
 
@@ -143,10 +143,10 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testLoadWithRelativePath(): void
     {
         $logFile = 'relative-path-test.log';
-        file_put_contents($this->testCacheDir . '/' . $logFile, 'Relative path test content');
+        file_put_contents($this->testCacheDir.'/'.$logFile, 'Relative path test content');
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
-        
+
         // Should work with relative path
         $documents = iterator_to_array($loader->load($logFile), false);
 
@@ -157,7 +157,7 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testDocumentMetadataContainsSource(): void
     {
         $logFile = 'metadata-test.log';
-        file_put_contents($this->testCacheDir . '/' . $logFile, 'Test content');
+        file_put_contents($this->testCacheDir.'/'.$logFile, 'Test content');
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
         $documents = iterator_to_array($loader->load($logFile), false);
@@ -174,7 +174,7 @@ class CachedLogsDocumentLoaderTest extends TestCase
     {
         $logFile = 'trim-test.log';
         $content = "  \n  Log content with whitespace  \n  \n";
-        file_put_contents($this->testCacheDir . '/' . $logFile, $content);
+        file_put_contents($this->testCacheDir.'/'.$logFile, $content);
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
         $documents = iterator_to_array($loader->load($logFile), false);
@@ -186,17 +186,17 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testMultipleLogFilesWithDifferentContent(): void
     {
         // Create log files with different content
-        file_put_contents($this->testCacheDir . '/errors.log', 'Error log content');
-        file_put_contents($this->testCacheDir . '/warnings.log', 'Warning log content');
-        file_put_contents($this->testCacheDir . '/info.log', 'Info log content');
+        file_put_contents($this->testCacheDir.'/errors.log', 'Error log content');
+        file_put_contents($this->testCacheDir.'/warnings.log', 'Warning log content');
+        file_put_contents($this->testCacheDir.'/info.log', 'Info log content');
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
         $documents = iterator_to_array($loader->load(), false);
 
         $this->assertCount(3, $documents);
 
-        $contents = array_map(fn($doc) => $doc->getContent(), $documents);
-        
+        $contents = array_map(fn ($doc) => $doc->getContent(), $documents);
+
         $this->assertContains('Error log content', $contents);
         $this->assertContains('Warning log content', $contents);
         $this->assertContains('Info log content', $contents);
@@ -205,14 +205,14 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testGetCacheDirReturnsCorrectPath(): void
     {
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
-        
+
         $this->assertEquals($this->testCacheDir, $loader->getCacheDir());
     }
 
     public function testLoadEmptyLogFileThrowsException(): void
     {
         $logFile = 'empty.log';
-        file_put_contents($this->testCacheDir . '/' . $logFile, '');
+        file_put_contents($this->testCacheDir.'/'.$logFile, '');
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
 
@@ -225,13 +225,13 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testLoadLargeLogFile(): void
     {
         $logFile = 'large.log';
-        
+
         // Create a large log file (1000 lines)
         $content = '';
-        for ($i = 1; $i <= 1000; $i++) {
+        for ($i = 1; $i <= 1000; ++$i) {
             $content .= "[2025-09-09 10:00:00] app.INFO: Log entry number {$i}\n";
         }
-        file_put_contents($this->testCacheDir . '/' . $logFile, $content);
+        file_put_contents($this->testCacheDir.'/'.$logFile, $content);
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
         $documents = iterator_to_array($loader->load($logFile), false);
@@ -245,7 +245,7 @@ class CachedLogsDocumentLoaderTest extends TestCase
     public function testLoadWithSpecialCharactersInFilename(): void
     {
         $logFile = 'app-2025-01-01_special.log';
-        file_put_contents($this->testCacheDir . '/' . $logFile, 'Special filename content');
+        file_put_contents($this->testCacheDir.'/'.$logFile, 'Special filename content');
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
         $documents = iterator_to_array($loader->load($logFile), false);
@@ -256,22 +256,22 @@ class CachedLogsDocumentLoaderTest extends TestCase
 
     public function testLoadGeneratesUniqueDocumentIds(): void
     {
-        file_put_contents($this->testCacheDir . '/log1.log', 'Content 1');
-        file_put_contents($this->testCacheDir . '/log2.log', 'Content 2');
+        file_put_contents($this->testCacheDir.'/log1.log', 'Content 1');
+        file_put_contents($this->testCacheDir.'/log2.log', 'Content 2');
 
         $loader = new CachedLogsDocumentLoader($this->testCacheDir);
         $documents = iterator_to_array($loader->load(), false);
 
         $this->assertCount(2, $documents);
 
-        $ids = array_map(fn($doc) => $doc->getId()->toRfc4122(), $documents);
-        
+        $ids = array_map(fn ($doc) => $doc->getId()->toRfc4122(), $documents);
+
         // IDs should be unique
         $this->assertCount(2, array_unique($ids));
     }
 
     /**
-     * Clean up test directory
+     * Clean up test directory.
      */
     private function cleanupTestDirectory(): void
     {
@@ -279,7 +279,7 @@ class CachedLogsDocumentLoaderTest extends TestCase
             return;
         }
 
-        $files = glob($this->testCacheDir . '/*');
+        $files = glob($this->testCacheDir.'/*');
         if ($files) {
             foreach ($files as $file) {
                 if (is_file($file)) {
@@ -287,7 +287,7 @@ class CachedLogsDocumentLoaderTest extends TestCase
                 }
             }
         }
-        
+
         rmdir($this->testCacheDir);
     }
 }

@@ -14,7 +14,7 @@ use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Message\UserMessage;
 
 /**
- * Conversational Log Inspector Chat
+ * Conversational Log Inspector Chat.
  *
  * Wraps the LogInspectorAgent with chat capabilities for multi-turn
  * conversations that maintain context across questions.
@@ -35,7 +35,7 @@ class LogInspectorChat implements ChatInterface
     private bool $initialized = false;
 
     public function __construct(
-        private readonly LogInspectorAgent                 $agent,
+        private readonly LogInspectorAgent $agent,
         MessageStoreInterface&ManagedStoreInterface $store,
     ) {
         $store = $store ?? new InMemoryStore();
@@ -45,9 +45,9 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Start a new investigation session with optional context
+     * Start a new investigation session with optional context.
      *
-     * @param string $context Investigation context (e.g., "Payment incident investigation")
+     * @param string      $context      Investigation context (e.g., "Payment incident investigation")
      * @param string|null $systemPrompt Custom system prompt (uses agent default if null)
      */
     public function startInvestigation(string $context = '', ?string $systemPrompt = null): void
@@ -62,12 +62,14 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Ask a question in the current investigation
+     * Ask a question in the current investigation.
      *
      * Maintains full conversation history for context-aware responses.
      *
      * @param string $question The question to ask
+     *
      * @return AssistantMessage The AI response
+     *
      * @throws \RuntimeException If investigation not started
      */
     public function ask(string $question): AssistantMessage
@@ -80,23 +82,26 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Get a quick analysis without starting a full investigation
+     * Get a quick analysis without starting a full investigation.
      *
      * @param string $question Single question for quick analysis
+     *
      * @return AssistantMessage The AI response
      */
     public function quickAnalysis(string $question): AssistantMessage
     {
         $this->startInvestigation('Quick log analysis session');
+
         return $this->ask($question);
     }
 
     /**
-     * Continue investigation with a follow-up question
+     * Continue investigation with a follow-up question.
      *
      * Alias for ask() that makes intent clearer in code.
      *
      * @param string $followUp The follow-up question
+     *
      * @return AssistantMessage The AI response
      */
     public function followUp(string $followUp): AssistantMessage
@@ -105,7 +110,7 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Request a summary of the current investigation
+     * Request a summary of the current investigation.
      *
      * @return AssistantMessage Summary of findings so far
      */
@@ -121,7 +126,7 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Request a timeline of events from the investigation
+     * Request a timeline of events from the investigation.
      *
      * @return AssistantMessage Timeline of events
      */
@@ -134,7 +139,7 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Request remediation recommendations
+     * Request remediation recommendations.
      *
      * @return AssistantMessage Remediation steps
      */
@@ -147,7 +152,7 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Initialize chat with existing messages (for session restoration)
+     * Initialize chat with existing messages (for session restoration).
      *
      * @param MessageBag $messages Previous conversation messages
      */
@@ -158,9 +163,10 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Submit a user message directly
+     * Submit a user message directly.
      *
      * @param UserMessage $message The user message
+     *
      * @return AssistantMessage The AI response
      */
     public function submit(UserMessage $message): AssistantMessage
@@ -173,7 +179,7 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Check if an investigation has been started
+     * Check if an investigation has been started.
      *
      * @return bool True if investigation is active
      */
@@ -183,7 +189,7 @@ class LogInspectorChat implements ChatInterface
     }
 
     /**
-     * Build the investigation system prompt
+     * Build the investigation system prompt.
      */
     private function buildInvestigationPrompt(string $context): string
     {
@@ -206,7 +212,7 @@ RESPONSE FORMAT:
 PROMPT;
 
         if (!empty($context)) {
-            $basePrompt .= "\n\nINVESTIGATION CONTEXT:\n" . $context;
+            $basePrompt .= "\n\nINVESTIGATION CONTEXT:\n".$context;
         }
 
         return $basePrompt;

@@ -9,11 +9,12 @@ class LogDocumentModelFactory
     public static function create(array $modelConfig, ?string $provider = null): LogDocumentModel
     {
         // For Ollama, create an Ollama-specific model
-        if ($provider === 'ollama') {
+        if ('ollama' === $provider) {
             $ollamaModel = new Ollama(
                 $modelConfig['name'],
                 $modelConfig['options'] ?? []
             );
+
             return LogDocumentModel::fromModel($ollamaModel);
         }
 
@@ -21,7 +22,7 @@ class LogDocumentModelFactory
         return new LogDocumentModel(
             $modelConfig['name'],
             $modelConfig['capabilities'] ?? [],
-            $modelConfig['options']      ?? []
+            $modelConfig['options'] ?? []
         );
     }
 }

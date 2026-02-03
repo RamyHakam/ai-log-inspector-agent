@@ -5,9 +5,10 @@ namespace Hakam\AiLogInspector\Test\Integration;
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
 use Hakam\AiLogInspector\Model\LogDocumentModel;
 use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
+use Hakam\AiLogInspector\Retriever\LogRetriever;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
-use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory;
 use Symfony\AI\Platform\Capability;
@@ -15,12 +16,11 @@ use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\TextDocument;
 use Symfony\AI\Store\Document\Vectorizer;
 use Symfony\AI\Store\InMemory\Store;
-use PHPUnit\Framework\Attributes\Group;
 use Symfony\Component\Dotenv\Dotenv;
 use Symfony\Component\Uid\Uuid;
 
 /**
- * Integration test using real OpenAI API
+ * Integration test using real OpenAI API.
  *
  * Set OPENAI_API_KEY in .env file or as environment variable to run this test
  * Example: vendor/bin/phpunit test/Integration/RealOpenAIIntegrationTest.php
@@ -33,7 +33,7 @@ class RealOpenAIIntegrationTest extends TestCase
     private VectorLogDocumentStore $vectorStore;
     private LogDocumentPlatform $logPlatform;
     private LogDocumentModel $model;
-    private LogDocumentVectorizer $vectorizer;
+    private LogRetriever $retriever;
     private LogInspectorAgent $agent;
     private LogSearchTool $tool;
 
@@ -43,7 +43,7 @@ class RealOpenAIIntegrationTest extends TestCase
     protected function setUp(): void
     {
         // Load .env file from project root
-        $envFile = dirname(__DIR__, 2) . '/.env';
+        $envFile = dirname(__DIR__, 2).'/.env';
         if (file_exists($envFile)) {
             $dotenv = new Dotenv();
             $dotenv->loadEnv($envFile);
@@ -69,16 +69,20 @@ class RealOpenAIIntegrationTest extends TestCase
         // Create LogDocumentPlatform wrapper
         $this->logPlatform = new LogDocumentPlatform($this->platform, $this->model);
 
-        // Create vectorizer with embedding model name (string per new API)
-        $this->vectorizer = new LogDocumentVectorizer($this->platform, self::EMBEDDING_MODEL);
-
         // Setup test data
         $this->setupRealWorldLogData();
+
+        // Create retriever with embedding model
+        $this->retriever = new LogRetriever(
+            $this->platform,
+            self::EMBEDDING_MODEL,
+            $this->vectorStore,
+        );
 
         // Create LogSearchTool
         $this->tool = new LogSearchTool(
             $this->vectorStore,
-            $this->vectorizer,
+            $this->retriever,
             $this->logPlatform
         );
 
@@ -101,8 +105,8 @@ class RealOpenAIIntegrationTest extends TestCase
                     'timestamp' => '2024-08-18T14:23:45Z',
                     'level' => 'error',
                     'source' => 'payment-service',
-                    'tags' => ['payment', 'stripe', 'card_declined', 'ecommerce']
-                ]
+                    'tags' => ['payment', 'stripe', 'card_declined', 'ecommerce'],
+                ],
             ],
             // Database connection timeout
             [
@@ -112,8 +116,8 @@ class RealOpenAIIntegrationTest extends TestCase
                     'timestamp' => '2024-08-18T14:23:50Z',
                     'level' => 'error',
                     'source' => 'database',
-                    'tags' => ['database', 'timeout', 'doctrine', 'orders']
-                ]
+                    'tags' => ['database', 'timeout', 'doctrine', 'orders'],
+                ],
             ],
             // Authentication brute force attempt
             [
@@ -123,8 +127,8 @@ class RealOpenAIIntegrationTest extends TestCase
                     'timestamp' => '2024-08-18T10:15:22Z',
                     'level' => 'warning',
                     'source' => 'security',
-                    'tags' => ['authentication', 'brute_force', 'security', 'admin']
-                ]
+                    'tags' => ['authentication', 'brute_force', 'security', 'admin'],
+                ],
             ],
             // Memory exhaustion in data processing
             [
@@ -134,8 +138,8 @@ class RealOpenAIIntegrationTest extends TestCase
                     'timestamp' => '2024-08-18T16:45:10Z',
                     'level' => 'critical',
                     'source' => 'data_processor',
-                    'tags' => ['memory', 'php', 'fatal_error', 'csv_import']
-                ]
+                    'tags' => ['memory', 'php', 'fatal_error', 'csv_import'],
+                ],
             ],
             // API rate limiting from external service
             [
@@ -145,8 +149,8 @@ class RealOpenAIIntegrationTest extends TestCase
                     'timestamp' => '2024-08-18T12:30:15Z',
                     'level' => 'warning',
                     'source' => 'shopify_integration',
-                    'tags' => ['api', 'rate_limit', 'shopify', 'external_service']
-                ]
+                    'tags' => ['api', 'rate_limit', 'shopify', 'external_service'],
+                ],
             ],
             // File permission error in log rotation
             [
@@ -156,9 +160,9 @@ class RealOpenAIIntegrationTest extends TestCase
                     'timestamp' => '2024-08-18T09:12:45Z',
                     'level' => 'error',
                     'source' => 'log_rotation',
-                    'tags' => ['filesystem', 'permissions', 'log_rotation', 'disk_space']
-                ]
-            ]
+                    'tags' => ['filesystem', 'permissions', 'log_rotation', 'disk_space'],
+                ],
+            ],
         ];
 
         // Convert log content to text documents
@@ -193,11 +197,11 @@ class RealOpenAIIntegrationTest extends TestCase
 
             // Verify AI correctly identified payment failure
             $reasonLower = strtolower($result['reason']);
-            $foundPaymentRelated = str_contains($reasonLower, 'card') ||
-                str_contains($reasonLower, 'payment') ||
-                str_contains($reasonLower, 'declined') ||
-                str_contains($reasonLower, 'stripe') ||
-                str_contains($reasonLower, 'gateway');
+            $foundPaymentRelated = str_contains($reasonLower, 'card')
+                || str_contains($reasonLower, 'payment')
+                || str_contains($reasonLower, 'declined')
+                || str_contains($reasonLower, 'stripe')
+                || str_contains($reasonLower, 'gateway');
 
             if ($foundPaymentRelated) {
                 $this->assertNotEmpty($result['evidence_logs']);
@@ -205,9 +209,9 @@ class RealOpenAIIntegrationTest extends TestCase
         }
 
         echo "\n Payment Analysis Result:\n";
-        echo "Success: " . ($result['success'] ? 'Yes' : 'No') . "\n";
-        echo "Reason: " . $result['reason'] . "\n";
-        echo "Evidence Logs: " . count($result['evidence_logs']) . " found\n";
+        echo 'Success: '.($result['success'] ? 'Yes' : 'No')."\n";
+        echo 'Reason: '.$result['reason']."\n";
+        echo 'Evidence Logs: '.count($result['evidence_logs'])." found\n";
     }
 
     public function testRealDatabasePerformanceIssue(): void
@@ -223,17 +227,17 @@ class RealOpenAIIntegrationTest extends TestCase
 
             $reasonLower = strtolower($result['reason']);
             $this->assertTrue(
-                str_contains($reasonLower, 'database') ||
-                str_contains($reasonLower, 'connection') ||
-                str_contains($reasonLower, 'timeout') ||
-                str_contains($reasonLower, 'sql'),
-                'AI should identify database performance issue. Got: ' . $result['reason']
+                str_contains($reasonLower, 'database')
+                || str_contains($reasonLower, 'connection')
+                || str_contains($reasonLower, 'timeout')
+                || str_contains($reasonLower, 'sql'),
+                'AI should identify database performance issue. Got: '.$result['reason']
             );
         }
 
         echo "\n Database Analysis Result:\n";
-        echo "Success: " . ($result['success'] ? 'Yes' : 'No') . "\n";
-        echo "Reason: " . $result['reason'] . "\n";
+        echo 'Success: '.($result['success'] ? 'Yes' : 'No')."\n";
+        echo 'Reason: '.$result['reason']."\n";
     }
 
     public function testRealSecurityIncidentAnalysis(): void
@@ -249,19 +253,19 @@ class RealOpenAIIntegrationTest extends TestCase
 
             $reasonLower = strtolower($result['reason']);
             $this->assertTrue(
-                str_contains($reasonLower, 'brute') ||
-                str_contains($reasonLower, 'attack') ||
-                str_contains($reasonLower, 'security') ||
-                str_contains($reasonLower, 'login') ||
-                str_contains($reasonLower, 'authentication') ||
-                str_contains($reasonLower, 'attempts'),
-                'AI should identify security/authentication issue. Got: ' . $result['reason']
+                str_contains($reasonLower, 'brute')
+                || str_contains($reasonLower, 'attack')
+                || str_contains($reasonLower, 'security')
+                || str_contains($reasonLower, 'login')
+                || str_contains($reasonLower, 'authentication')
+                || str_contains($reasonLower, 'attempts'),
+                'AI should identify security/authentication issue. Got: '.$result['reason']
             );
         }
 
         echo "\n Security Analysis Result:\n";
-        echo "Success: " . ($result['success'] ? 'Yes' : 'No') . "\n";
-        echo "Reason: " . $result['reason'] . "\n";
+        echo 'Success: '.($result['success'] ? 'Yes' : 'No')."\n";
+        echo 'Reason: '.$result['reason']."\n";
     }
 
     public function testRealMemoryIssueAnalysis(): void
@@ -277,19 +281,19 @@ class RealOpenAIIntegrationTest extends TestCase
 
             $reasonLower = strtolower($result['reason']);
             $this->assertTrue(
-                str_contains($reasonLower, 'memory') ||
-                str_contains($reasonLower, 'exhausted') ||
-                str_contains($reasonLower, 'php') ||
-                str_contains($reasonLower, 'fatal') ||
-                str_contains($reasonLower, 'csv') ||
-                str_contains($reasonLower, 'processing'),
-                'AI should identify memory exhaustion issue. Got: ' . $result['reason']
+                str_contains($reasonLower, 'memory')
+                || str_contains($reasonLower, 'exhausted')
+                || str_contains($reasonLower, 'php')
+                || str_contains($reasonLower, 'fatal')
+                || str_contains($reasonLower, 'csv')
+                || str_contains($reasonLower, 'processing'),
+                'AI should identify memory exhaustion issue. Got: '.$result['reason']
             );
         }
 
         echo "\n Memory Analysis Result:\n";
-        echo "Success: " . ($result['success'] ? 'Yes' : 'No') . "\n";
-        echo "Reason: " . $result['reason'] . "\n";
+        echo 'Success: '.($result['success'] ? 'Yes' : 'No')."\n";
+        echo 'Reason: '.$result['reason']."\n";
     }
 
     public function testRealIrrelevantQuery(): void
@@ -302,8 +306,8 @@ class RealOpenAIIntegrationTest extends TestCase
 
         // For irrelevant queries, we expect success to be false or low relevance
         echo "\n Irrelevant Query Result:\n";
-        echo "Success: " . ($result['success'] ? 'Yes' : 'No') . "\n";
-        echo "Reason: " . $result['reason'] . "\n";
+        echo 'Success: '.($result['success'] ? 'Yes' : 'No')."\n";
+        echo 'Reason: '.$result['reason']."\n";
     }
 
     public function testRealAgentWorkflow(): void
@@ -318,6 +322,6 @@ class RealOpenAIIntegrationTest extends TestCase
         $this->assertNotEmpty($content);
 
         echo "\n Agent Workflow Result:\n";
-        echo "Content: " . (is_string($content) ? $content : json_encode($content)) . "\n";
+        echo 'Content: '.(is_string($content) ? $content : json_encode($content))."\n";
     }
 }

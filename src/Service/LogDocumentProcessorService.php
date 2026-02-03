@@ -26,7 +26,7 @@ readonly class LogDocumentProcessorService
      * Process a single log data entry (DTO or array).
      *
      * @param LogDataDTO|array $logData Single log data entry
-     * @param array $options Additional indexing options
+     * @param array            $options Additional indexing options
      */
     public function processData(LogDataDTO|array $logData, array $options = []): void
     {
@@ -39,6 +39,6 @@ readonly class LogDocumentProcessorService
             $documents[] = LogDocumentFactory::createFromData($data);
         }
 
-        $this->processDocuments($documents, );
+        $this->processDocuments($documents);
     }
 }

@@ -4,10 +4,10 @@ namespace Hakam\AiLogInspector\Test\Unit\Store;
 
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use PHPUnit\Framework\TestCase;
-use Symfony\AI\Store\InMemory\Store as InMemoryStore;
 use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
+use Symfony\AI\Store\InMemory\Store as InMemoryStore;
 use Symfony\Component\Uid\Uuid;
 
 class VectorLogDocumentStoreInMemoryTest extends TestCase
@@ -143,12 +143,12 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
     public function testQueryWithMaxItemsLimit(): void
     {
         // Add 10 documents
-        for ($i = 1; $i <= 10; $i++) {
+        for ($i = 1; $i <= 10; ++$i) {
             $vector = new Vector(array_fill(0, 5, $i * 0.1));
             $metadata = new Metadata([
                 'log_id' => sprintf('log_%03d', $i),
                 'content' => "Log entry $i",
-                'level' => $i % 2 === 0 ? 'error' : 'warning',
+                'level' => 0 === $i % 2 ? 'error' : 'warning',
             ]);
 
             $document = new VectorDocument(Uuid::v4(), $vector, $metadata);
@@ -216,7 +216,7 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         $this->assertGreaterThanOrEqual(1, count($results));
 
         // Verify we can find documents with specific levels
-        $levels_found = array_map(fn($doc) => $doc->metadata['level'] ?? null, $results);
+        $levels_found = array_map(fn ($doc) => $doc->metadata['level'] ?? null, $results);
         $this->assertNotEmpty($levels_found);
     }
 
@@ -253,7 +253,7 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         $this->assertGreaterThanOrEqual(1, count($results));
 
         // Verify categories are preserved
-        $categories_found = array_map(fn($doc) => $doc->metadata['category'] ?? null, $results);
+        $categories_found = array_map(fn ($doc) => $doc->metadata['category'] ?? null, $results);
         $this->assertNotEmpty($categories_found);
     }
 
@@ -263,7 +263,7 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         $batch2 = [];
 
         // Create batch 1: 5 documents
-        for ($i = 1; $i <= 5; $i++) {
+        for ($i = 1; $i <= 5; ++$i) {
             $vector = new Vector(array_fill(0, 5, $i * 0.1));
             $metadata = new Metadata([
                 'log_id' => sprintf('batch1_%03d', $i),
@@ -274,7 +274,7 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         }
 
         // Create batch 2: 5 documents
-        for ($i = 1; $i <= 5; $i++) {
+        for ($i = 1; $i <= 5; ++$i) {
             $vector = new Vector(array_fill(0, 5, 0.5 + $i * 0.05));
             $metadata = new Metadata([
                 'log_id' => sprintf('batch2_%03d', $i),
@@ -337,8 +337,8 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         $results2 = iterator_to_array($store2->queryForVector($vector, ['maxItems' => 10]));
 
         // Each store should only have its own documents
-        $ids1 = array_map(fn($doc) => $doc->metadata['log_id'], $results1);
-        $ids2 = array_map(fn($doc) => $doc->metadata['log_id'], $results2);
+        $ids1 = array_map(fn ($doc) => $doc->metadata['log_id'], $results1);
+        $ids2 = array_map(fn ($doc) => $doc->metadata['log_id'], $results2);
 
         $this->assertContains('store1_001', $ids1);
         $this->assertContains('store2_001', $ids2);
@@ -368,7 +368,7 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
     {
         $vector = new Vector([0.25, 0.35, 0.45, 0.55, 0.65]);
 
-        for ($i = 1; $i <= 3; $i++) {
+        for ($i = 1; $i <= 3; ++$i) {
             $metadata = new Metadata([
                 'log_id' => sprintf('consistent_%03d', $i),
                 'content' => "Consistent test entry $i",

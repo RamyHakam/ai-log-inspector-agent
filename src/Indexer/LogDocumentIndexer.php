@@ -19,12 +19,12 @@ use Symfony\AI\Store\Document\LoaderInterface;
 class LogDocumentIndexer extends AbstractLogIndexer
 {
     /**
-     * @param PlatformInterface $embeddingPlatform The AI platform for generating embeddings
-     * @param string $model The embedding model to use (e.g., 'text-embedding-3-small')
-     * @param LoaderInterface $loader The document loader (default: InMemoryLoader)
-     * @param VectorLogStoreInterface $logStore The vector store for storing embeddings
-     * @param int $chunkSize Size of text chunks for splitting (default: 500)
-     * @param int $chunkOverlap Overlap between chunks to maintain context (default: 100)
+     * @param PlatformInterface       $embeddingPlatform The AI platform for generating embeddings
+     * @param string                  $model             The embedding model to use (e.g., 'text-embedding-3-small')
+     * @param LoaderInterface         $loader            The document loader (default: InMemoryLoader)
+     * @param VectorLogStoreInterface $logStore          The vector store for storing embeddings
+     * @param int                     $chunkSize         Size of text chunks for splitting (default: 500)
+     * @param int                     $chunkOverlap      Overlap between chunks to maintain context (default: 100)
      */
     public function __construct(
         PlatformInterface $embeddingPlatform,

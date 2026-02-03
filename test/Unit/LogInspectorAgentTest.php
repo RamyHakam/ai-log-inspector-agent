@@ -3,15 +3,15 @@
 namespace Hakam\AiLogInspector\Test\Unit;
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Hakam\AiLogInspector\Test\Unit\Tool\MockTools\MockAnalyticsTool;
 use Hakam\AiLogInspector\Test\Unit\Tool\MockTools\MockReportingTool;
 use Hakam\AiLogInspector\Test\Unit\Tool\MockTools\MockSearchTool;
-use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\PlatformInterface;
-use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\DeferredResult;
+use Symfony\AI\Platform\Result\ResultInterface;
 
 class LogInspectorAgentTest extends TestCase
 {
@@ -50,7 +50,7 @@ class LogInspectorAgentTest extends TestCase
     public function testConstructWithMultipleTools(): void
     {
         $tools = [
-          new MockSearchTool(),
+            new MockSearchTool(),
             new MockAnalyticsTool(),
             new MockReportingTool(),
         ];
@@ -95,7 +95,7 @@ class LogInspectorAgentTest extends TestCase
     public function testGetDefaultSystemPrompt(): void
     {
         $defaultPrompt = LogInspectorAgent::getDefaultSystemPrompt();
-        
+
         // Test that the default prompt contains key components
         $this->assertNotEmpty($defaultPrompt);
         $this->assertStringContainsString('AI Log Inspector', $defaultPrompt);
@@ -107,7 +107,7 @@ class LogInspectorAgentTest extends TestCase
         $this->assertStringContainsString('Database Issues', $defaultPrompt);
         $this->assertStringContainsString('Payment Failures', $defaultPrompt);
         $this->assertStringContainsString('Security Incidents', $defaultPrompt);
-        
+
         // Ensure it's comprehensive (should be substantial)
         $this->assertGreaterThan(2000, strlen($defaultPrompt), 'Default prompt should be comprehensive');
     }
@@ -120,9 +120,9 @@ class LogInspectorAgentTest extends TestCase
             [$tool]
             // No custom prompt provided
         );
-        
+
         $this->assertInstanceOf(LogInspectorAgent::class, $agent);
-        
+
         // The default prompt should be used internally
         // We can't directly test the internal prompt, but we can ensure
         // the agent was constructed successfully with the default prompt
@@ -131,7 +131,7 @@ class LogInspectorAgentTest extends TestCase
     public function testDefaultPromptContentQuality(): void
     {
         $defaultPrompt = LogInspectorAgent::getDefaultSystemPrompt();
-        
+
         // Test for professional language and structure
         $this->assertStringContainsString('🎯', $defaultPrompt, 'Should have visual organization');
         $this->assertStringContainsString('**Summary**', $defaultPrompt, 'Should define response structure');
@@ -141,7 +141,7 @@ class LogInspectorAgentTest extends TestCase
         $this->assertStringContainsString('**Immediate Actions**', $defaultPrompt, 'Should provide actionable steps');
         $this->assertStringContainsString('**Prevention**', $defaultPrompt, 'Should suggest prevention measures');
         $this->assertStringContainsString('**Confidence**', $defaultPrompt, 'Should include confidence assessment');
-        
+
         // Test for technical scenarios coverage
         $this->assertStringContainsString('Database', $defaultPrompt);
         $this->assertStringContainsString('Payment', $defaultPrompt);
@@ -149,7 +149,7 @@ class LogInspectorAgentTest extends TestCase
         $this->assertStringContainsString('Security', $defaultPrompt);
         $this->assertStringContainsString('PHP', $defaultPrompt);
         $this->assertStringContainsString('microservices', $defaultPrompt);
-        
+
         // Test for important analysis concepts
         $this->assertStringContainsString('log IDs', $defaultPrompt);
         $this->assertStringContainsString('Never invent', $defaultPrompt);
@@ -271,7 +271,7 @@ class LogInspectorAgentTest extends TestCase
     {
         $testCases = [
             'array' => [
-               new MockSearchTool(),
+                new MockSearchTool(),
                 new MockAnalyticsTool(),
                 new MockReportingTool(),
             ],
@@ -294,12 +294,14 @@ class LogInspectorAgentTest extends TestCase
     }
 
     /**
-     * Helper method to create a mock tool with AsTool attribute simulation
+     * Helper method to create a mock tool with AsTool attribute simulation.
      */
     private function createMockTool(string $name = 'mock_tool'): object
     {
         $tool = new class($name) {
-            public function __construct(private string $name) {}
+            public function __construct(private string $name)
+            {
+            }
 
             public function getName(): string
             {
@@ -316,7 +318,7 @@ class LogInspectorAgentTest extends TestCase
     }
 
     /**
-     * Helper method to create a generator of tools
+     * Helper method to create a generator of tools.
      */
     private function createToolGenerator(): \Generator
     {

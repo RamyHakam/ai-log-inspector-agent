@@ -10,7 +10,7 @@ class LogDocumentModel implements LogDocumentModelInterface
     private array $capabilities;
 
     /**
-     * Known embedding model patterns for different providers
+     * Known embedding model patterns for different providers.
      */
     private const EMBEDDING_MODEL_PATTERNS = [
         // OpenAI
@@ -31,10 +31,10 @@ class LogDocumentModel implements LogDocumentModelInterface
 
     public function __construct(
         string $modelName,
-        array  $capabilities = [],
-        array  $options = []
+        array $capabilities = [],
+        array $options = []
     ) {
-        $this->model        = new Model($modelName, $capabilities, $options);
+        $this->model = new Model($modelName, $capabilities, $options);
         $this->capabilities = $capabilities;
     }
 
@@ -44,7 +44,7 @@ class LogDocumentModel implements LogDocumentModelInterface
     }
 
     /**
-     * Check if this model supports embeddings/vectorization
+     * Check if this model supports embeddings/vectorization.
      */
     public function supportsEmbedding(): bool
     {
@@ -65,7 +65,7 @@ class LogDocumentModel implements LogDocumentModelInterface
     }
 
     /**
-     * Get model capabilities
+     * Get model capabilities.
      */
     public function getCapabilities(): array
     {
@@ -74,8 +74,9 @@ class LogDocumentModel implements LogDocumentModelInterface
 
     public static function fromModel(Model $model): self
     {
-        $instance        = new self($model->getName(), [], []);
+        $instance = new self($model->getName(), [], []);
         $instance->model = $model;
+
         return $instance;
     }
 }

@@ -17,11 +17,11 @@ final class LogInspectorAgent implements AgentInterface
 
     public function __construct(
         private readonly LogDocumentPlatformInterface $platform,
-        private readonly  iterable $tools,
+        private readonly iterable $tools,
         private ?string $systemPrompt = null,
     ) {
-        $toolbox     = new Toolbox($this->tools);
-        $processor   = new AgentProcessor($toolbox);
+        $toolbox = new Toolbox($this->tools);
+        $processor = new AgentProcessor($toolbox);
         $this->agent = new Agent(
             $this->platform->getPlatform(),
             $this->platform->getModel()->getName(),
@@ -48,12 +48,13 @@ final class LogInspectorAgent implements AgentInterface
             Message::forSystem($this->systemPrompt),
             Message::ofUser($question),
         );
+
         return $this->agent->call($messages);
     }
 
     /**
      * Get the comprehensive default system prompt optimized for log analysis
-     * This can be used as a starting point for custom prompts
+     * This can be used as a starting point for custom prompts.
      */
     public static function getDefaultSystemPrompt(): string
     {

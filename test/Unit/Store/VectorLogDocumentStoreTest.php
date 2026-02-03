@@ -4,11 +4,11 @@ namespace Hakam\AiLogInspector\Test\Unit\Store;
 
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use PHPUnit\Framework\TestCase;
-use Symfony\AI\Store\Bridge\Cache\Store as CacheStore;
-use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\AI\Platform\Vector\Vector;
+use Symfony\AI\Store\Bridge\Cache\Store as CacheStore;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Uid\Uuid;
 
 class VectorLogDocumentStoreTest extends TestCase
@@ -142,7 +142,7 @@ class VectorLogDocumentStoreTest extends TestCase
     public function testQueryForVectorWithMaxItems(): void
     {
         // Save multiple documents
-        for ($i = 1; $i <= 5; $i++) {
+        for ($i = 1; $i <= 5; ++$i) {
             $vector = new Vector([
                 $i * 0.1,
                 $i * 0.2,
@@ -248,7 +248,7 @@ class VectorLogDocumentStoreTest extends TestCase
         foreach ($vectors as $index => $vector) {
             $metadata = new Metadata([
                 'log_id' => sprintf('log_multi_%d', $index),
-                'content' => "Vector document " . ($index + 1),
+                'content' => 'Vector document '.($index + 1),
                 'level' => 'info',
             ]);
 

@@ -15,6 +15,7 @@ readonly class LogFileProcessorService
     {
         if (empty($files)) {  // Process all log files if none are specified
             $this->indexer->indexAllLogs($options);
+
             return;
         }
 

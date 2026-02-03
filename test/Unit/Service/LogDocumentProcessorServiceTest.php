@@ -2,7 +2,6 @@
 
 namespace Hakam\AiLogInspector\Test\Unit\Service;
 
-use DateTimeImmutable;
 use Hakam\AiLogInspector\Document\LogDocument;
 use Hakam\AiLogInspector\DTO\LogDataDTO;
 use Hakam\AiLogInspector\Indexer\LogDocumentIndexer;
@@ -14,7 +13,6 @@ use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\DeferredResult;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Store\Document\Loader\InMemoryLoader;
-use Symfony\AI\Store\Document\TextDocument;
 
 class LogDocumentProcessorServiceTest extends TestCase
 {
@@ -29,7 +27,7 @@ class LogDocumentProcessorServiceTest extends TestCase
 
         $this->platform = $this->createMockPlatform();
         $this->store = new VectorLogDocumentStore();
-        
+
         $this->indexer = new LogDocumentIndexer(
             embeddingPlatform: $this->platform,
             model: 'text-embedding-3-small',
@@ -44,7 +42,7 @@ class LogDocumentProcessorServiceTest extends TestCase
     {
         // Should not throw any exceptions
         $this->service->processDocuments([]);
-        
+
         $this->assertTrue(true);
     }
 
@@ -85,7 +83,7 @@ class LogDocumentProcessorServiceTest extends TestCase
             new LogDataDTO(
                 message: 'Payment failed',
                 level: 'ERROR',
-                timestamp: new DateTimeImmutable(),
+                timestamp: new \DateTimeImmutable(),
                 channel: 'payment',
                 context: [
                     'user_id' => 123,
@@ -132,7 +130,7 @@ class LogDocumentProcessorServiceTest extends TestCase
             new LogDataDTO(
                 message: 'DTO message',
                 level: 'INFO',
-                timestamp: new DateTimeImmutable()
+                timestamp: new \DateTimeImmutable()
             ),
             [
                 'message' => 'Array message',
@@ -148,7 +146,7 @@ class LogDocumentProcessorServiceTest extends TestCase
     public function testProcessDataWithEmptyArrayDoesNothing(): void
     {
         $this->service->processData([]);
-        
+
         $this->assertTrue(true);
     }
 
@@ -158,7 +156,7 @@ class LogDocumentProcessorServiceTest extends TestCase
             new LogDataDTO(
                 message: 'Payment gateway timeout',
                 level: 'ERROR',
-                timestamp: new DateTimeImmutable(),
+                timestamp: new \DateTimeImmutable(),
                 channel: 'payment',
                 context: [
                     'request_id' => 'req_123',
@@ -227,7 +225,9 @@ class LogDocumentProcessorServiceTest extends TestCase
             public function invoke(string $model, array|string|object $input, array $options = []): DeferredResult
             {
                 $mockResult = new class($input) implements ResultInterface {
-                    public function __construct(private array|string|object $input) {}
+                    public function __construct(private array|string|object $input)
+                    {
+                    }
 
                     public function getContent(): mixed
                     {
@@ -237,8 +237,8 @@ class LogDocumentProcessorServiceTest extends TestCase
                 };
 
                 return new DeferredResult(
-                    fn() => $mockResult->getContent(),
-                    fn($content) => $mockResult
+                    fn () => $mockResult->getContent(),
+                    fn ($content) => $mockResult
                 );
             }
 
