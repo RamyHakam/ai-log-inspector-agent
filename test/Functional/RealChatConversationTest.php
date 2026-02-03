@@ -11,27 +11,27 @@ use Hakam\AiLogInspector\Tool\RequestContextTool;
 use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
 use Hakam\AiLogInspector\Test\Support\LogFileLoader;
 use PHPUnit\Framework\TestCase;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\AI\Platform\Message\AssistantMessage;
 use Symfony\AI\Store\InMemory\Store;
 
 /**
  * Real Ollama-based integration test for multi-turn chat conversations
- * 
+ *
  * This test demonstrates actual multi-turn conversations with:
  * - Context preservation across questions
  * - Session persistence
  * - Real AI responses
- * 
+ *
  * Requirements:
  * - Ollama running locally: http://localhost:11434
  * - Model with tool calling: ollama pull llama3.2:1b
- * 
+ *
  * Run: vendor/bin/phpunit test/Functional/RealChatConversationTest.php
- * 
- * @group ollama
- * @group functional
- * @group chat
  */
+#[Group('ollama')]
+#[Group('functional')]
+#[Group('chat')]
 class RealChatConversationTest extends TestCase
 {
     private string $testStoragePath;

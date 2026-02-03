@@ -58,7 +58,25 @@ class LogSearchToolIntegrationTest extends TestCase
 
     private function handleRequest(array|string|object $input): ResultInterface
     {
-        $inputString = is_string($input) ? $input : (string)$input;
+        if (is_string($input)) {
+            $inputString = $input;
+        } elseif ($input instanceof \Symfony\AI\Platform\Message\MessageBag) {
+            $inputString = '';
+            foreach ($input as $message) {
+                if (method_exists($message, 'getContent')) {
+                    $content = $message->getContent();
+                    if (is_array($content)) {
+                        foreach ($content as $contentItem) {
+                            if (method_exists($contentItem, 'getText')) {
+                                $inputString .= $contentItem->getText() . ' ';
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            $inputString = '';
+        }
 
         if (!str_contains($inputString, 'Analyze these log entries')) {
             if (str_contains($inputString, 'checkout') || str_contains($inputString, 'payment') || str_contains($inputString, 'timeout')) {

@@ -13,17 +13,17 @@ use Hakam\AiLogInspector\Test\Support\LogFileLoader;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
+use PHPUnit\Framework\Attributes\Group;
 use Symfony\AI\Store\InMemory\Store;
 
 /**
  * Integration tests for Chat functionality
- * 
+ *
  * These tests demonstrate API usage patterns without requiring actual AI execution.
  * For real multi-turn conversation tests with Ollama, see:
  * test/Functional/RealChatConversationTest.php
- * 
- * @group integration
  */
+#[Group('integration')]
 class ChatIntegrationTest extends TestCase
 {
     private string $testStoragePath;

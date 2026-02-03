@@ -72,7 +72,7 @@ class SimpleIntegrationTest extends TestCase
         // Handle different input types from the agent
         if (is_string($input)) {
             $inputString = $input;
-        } elseif ($input instanceof \Symfony\AI\Platform\Message\MessageBagInterface) {
+        } elseif ($input instanceof \Symfony\AI\Platform\Message\MessageBag) {
             // Extract content from MessageBag (when agent calls with messages)
             $messages = iterator_to_array($input);
             $inputString = '';
@@ -91,7 +91,7 @@ class SimpleIntegrationTest extends TestCase
                 }
             }
         } else {
-            $inputString = (string) $input;
+            $inputString = '';
         }
         
         // Debug: echo the input to understand what's being sent
