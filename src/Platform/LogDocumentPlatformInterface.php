@@ -23,4 +23,14 @@ interface LogDocumentPlatformInterface
      * @return Model
      */
     public function getModel(): Model;
+
+    /**
+     * Check if the platform/model supports embeddings for vectorization.
+     *
+     * Chat models (GPT-4, Claude, etc.) do NOT support embeddings.
+     * Embedding models (text-embedding-ada-002, nomic-embed-text, etc.) DO support embeddings.
+     *
+     * @return bool
+     */
+    public function supportsEmbedding(): bool;
 }

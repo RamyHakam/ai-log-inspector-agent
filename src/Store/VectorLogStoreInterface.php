@@ -9,5 +9,4 @@ interface VectorLogStoreInterface
     public function saveLogVectorDocuments(array $logVectorsDocs): void;
 
     public function queryForVector(Vector $query, array $options = []): iterable;
-
 }

@@ -9,7 +9,6 @@ use Hakam\AiLogInspector\Tool\RequestContextTool;
 
 class LogInspectorChatFactory
 {
-
     public static function create(
         LogDocumentPlatformInterface $platform,
         LogSearchTool $searchTool,

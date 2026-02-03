@@ -16,8 +16,9 @@ use Hakam\AiLogInspector\Platform\LogDocumentPlatformFactory;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
-use Hakam\AiLogInspector\Document\TextDocumentFactory;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
+use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
+use Symfony\AI\Store\InMemory\Store as InMemoryStore;
 
 // 1. Setup platform
 $platform = LogDocumentPlatformFactory::create([
@@ -30,41 +31,30 @@ $platform = LogDocumentPlatformFactory::create([
 $store = new VectorLogDocumentStore(new InMemoryStore());
 $vectorizer = new LogDocumentVectorizer(
     $platform->getPlatform(),
-    $platform->getModel()
+    'text-embedding-3-small'
 );
 $tool = new LogSearchTool($store, $vectorizer, $platform);
 
 // 3. Create agent
 $agent = new LogInspectorAgent($platform, [$tool]);
 
-// 4. Index some logs
-$logs = [
-    '[2024-01-30 14:23:45] ERROR: Payment gateway timeout for order #12345',
-    '[2024-01-30 14:23:46] ERROR: Stripe API returned 504 Gateway Timeout',
-    '[2024-01-30 14:23:50] ERROR: Payment failed after 3 retry attempts',
-];
+// 4. Create a loader and indexer for your log files
+$loader = new CachedLogsDocumentLoader('/var/log/app');
 
-foreach ($logs as $i => $log) {
-    $doc = TextDocumentFactory::createFromString(
-        content: $log,
-        metadata: [
-            'log_id' => 'log_' . str_pad((string)$i, 3, '0', STR_PAD_LEFT),
-            'timestamp' => '2024-01-30T14:23:' . (45 + $i) . 'Z',
-            'level' => 'error',
-            'source' => 'payment-service'
-        ]
-    );
-    
-    // Index the log (vectorizes and stores)
-    $indexer = new \Hakam\AiLogInspector\Indexer\VectorLogDocumentIndexer(
-        $platform->getPlatform(),
-        $platform->getModel()->getName(),
-        $store
-    );
-    $indexer->indexAndSaveLogs([$doc]);
-}
+$indexer = new LogFileIndexer(
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    loader: $loader,
+    logStore: $store,
+    chunkSize: 500,
+    chunkOverlap: 100
+);
 
-// 5. Ask a question!
+// 5. Index log files
+$indexer->indexLogFile('errors.log');
+// Or index all logs: $indexer->indexAllLogs();
+
+// 6. Ask a question!
 $result = $agent->ask('Why did the payment fail for order 12345?');
 
 echo "AI Response:\n";
@@ -82,42 +72,42 @@ experiencing problems at that time.
 
 ## Loading Logs from Files
 
-Read and index logs from log files:
+The recommended approach is to use the loader-based indexer:
 
 ```php
 <?php
 
-use Hakam\AiLogInspector\Service\LogProcessorService;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
+use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
+use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 
-// Create agent (as shown above)
-$agent = new LogInspectorAgent($platform, [$tool]);
+// Create a loader pointing to your logs directory
+$loader = new CachedLogsDocumentLoader('/var/log/app');
 
-// Parse and index log file
-$logFile = '/var/log/app/production.log';
-$handle = fopen($logFile, 'r');
+// Create the indexer
+$indexer = new LogFileIndexer(
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    loader: $loader,
+    logStore: $store,
+    chunkSize: 500,
+    chunkOverlap: 100
+);
 
-while (($line = fgets($handle)) !== false) {
-    // Parse log line (adjust regex for your format)
-    if (preg_match('/\[([^\]]+)\] (\w+): (.+)/', $line, $matches)) {
-        $timestamp = $matches[1];
-        $level = strtolower($matches[2]);
-        $message = $matches[3];
-        
-        $doc = TextDocumentFactory::createFromString(
-            content: $line,
-            metadata: [
-                'log_id' => md5($line),
-                'timestamp' => $timestamp,
-                'level' => $level,
-                'content' => $message
-            ]
-        );
-        
-        $indexer->indexAndSaveLogs([$doc]);
-    }
-}
+// Index a single log file
+$indexer->indexLogFile('production.log');
 
-fclose($handle);
+// Or index multiple specific files
+$indexer->indexLogFiles(['production.log', 'errors.log', 'security.log']);
+
+// Or index all .log files in the directory
+$indexer->indexAllLogs();
+
+// With options for pattern matching
+$indexer->indexAllLogs([
+    'pattern' => '*.log',      // Glob pattern (default: *.log)
+    'recursive' => true,       // Search subdirectories
+]);
 
 // Now query the indexed logs
 $result = $agent->ask('What errors occurred in the last hour?');
@@ -202,38 +192,33 @@ $result = $agent->ask('Show failed email deliveries');
 
 ## Multiple Log Sources
 
-Index logs from different services:
+Index logs from different services using multiple loaders:
 
 ```php
-// Service A logs
-$serviceALogs = [
-    '[2024-01-30 14:00:00] INFO: API Gateway - Incoming request',
-    '[2024-01-30 14:00:05] ERROR: API Gateway - Timeout from backend',
-];
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
+use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 
-foreach ($serviceALogs as $log) {
-    $doc = TextDocumentFactory::createFromString(
-        content: $log,
-        metadata: ['source' => 'api-gateway', 'level' => 'error']
-    );
-    $indexer->indexAndSaveLogs([$doc]);
-}
+// Index logs from API Gateway service
+$apiGatewayLoader = new CachedLogsDocumentLoader('/var/log/api-gateway');
+$apiGatewayIndexer = new LogFileIndexer(
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    loader: $apiGatewayLoader,
+    logStore: $store  // Use same store for unified search
+);
+$apiGatewayIndexer->indexAllLogs();
 
-// Service B logs
-$serviceBLogs = [
-    '[2024-01-30 14:00:01] INFO: Auth Service - User authenticated',
-    '[2024-01-30 14:00:04] ERROR: Auth Service - Database timeout',
-];
+// Index logs from Auth Service
+$authServiceLoader = new CachedLogsDocumentLoader('/var/log/auth-service');
+$authServiceIndexer = new LogFileIndexer(
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    loader: $authServiceLoader,
+    logStore: $store  // Same store - logs are combined
+);
+$authServiceIndexer->indexAllLogs();
 
-foreach ($serviceBLogs as $log) {
-    $doc = TextDocumentFactory::createFromString(
-        content: $log,
-        metadata: ['source' => 'auth-service', 'level' => 'error']
-    );
-    $indexer->indexAndSaveLogs([$doc]);
-}
-
-// Query across all services
+// Query across all services (logs from both are in the same store)
 $result = $agent->ask('What caused the timeout errors?');
 echo $result->getContent();
 ```
@@ -272,41 +257,35 @@ $platform = LogDocumentPlatformFactory::create([
 
 ## Batch Processing
 
-Process and index logs in batches:
+The indexer handles batch processing automatically with configurable chunk sizes:
 
 ```php
-$logFiles = glob('/var/log/app/*.log');
-$batchSize = 100;
-$batch = [];
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
+use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 
-foreach ($logFiles as $file) {
-    $handle = fopen($file, 'r');
-    
-    while (($line = fgets($handle)) !== false) {
-        $doc = TextDocumentFactory::createFromString(
-            content: $line,
-            metadata: ['log_id' => md5($line)]
-        );
-        
-        $batch[] = $doc;
-        
-        // Index in batches
-        if (count($batch) >= $batchSize) {
-            $indexer->indexAndSaveLogs($batch);
-            $batch = [];
-            echo "Indexed batch...\n";
-        }
-    }
-    
-    fclose($handle);
-}
+// Create loader for your logs directory
+$loader = new CachedLogsDocumentLoader('/var/log/app');
 
-// Index remaining
-if (!empty($batch)) {
-    $indexer->indexAndSaveLogs($batch);
-}
+// Create indexer with custom chunk settings
+$indexer = new LogFileIndexer(
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    loader: $loader,
+    logStore: $store,
+    chunkSize: 1000,    // Larger chunks for less API calls
+    chunkOverlap: 200   // Overlap to preserve context
+);
+
+// Index all log files - the indexer handles batching internally
+$indexer->indexAllLogs([
+    'chunk_size' => 50  // Process 50 documents at a time
+]);
 
 echo "All logs indexed!\n";
+
+// Or index specific files in sequence
+$logFiles = ['app-2024-01.log', 'app-2024-02.log', 'app-2024-03.log'];
+$indexer->indexLogFiles($logFiles);
 ```
 
 ## Error Handling
@@ -354,38 +333,44 @@ if (str_contains($content, 'No relevant logs')) {
 
 ## Real-Time Log Monitoring
 
-Monitor logs in real-time:
+For real-time monitoring, periodically re-index the log file:
 
 ```php
-// Monitor log file for new entries
-$logFile = '/var/log/app/production.log';
-$lastPosition = 0;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
+use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 
+// Create loader and indexer
+$loader = new CachedLogsDocumentLoader('/var/log/app');
+$indexer = new LogFileIndexer(
+    embeddingPlatform: $platform->getPlatform(),
+    model: 'text-embedding-3-small',
+    loader: $loader,
+    logStore: $store
+);
+
+// Initial indexing
+$indexer->indexLogFile('production.log');
+
+// Monitor for new entries periodically
 while (true) {
-    $handle = fopen($logFile, 'r');
-    fseek($handle, $lastPosition);
-    
-    while (($line = fgets($handle)) !== false) {
-        // Index new log entry
-        $doc = TextDocumentFactory::createFromString(
-            content: $line,
-            metadata: ['log_id' => md5($line . microtime())]
-        );
-        $indexer->indexAndSaveLogs([$doc]);
-        
-        // Check for critical errors
-        if (str_contains(strtolower($line), 'critical')) {
-            $result = $agent->ask('Analyze this critical error: ' . $line);
-            echo "🚨 CRITICAL: " . $result->getContent() . "\n";
-        }
-        
-        $lastPosition = ftell($handle);
+    // Re-index to pick up new log entries
+    // Note: For production, consider using a streaming approach
+    // or file watching to detect changes
+    $indexer->indexLogFile('production.log');
+
+    // Check for critical errors
+    $result = $agent->ask('Are there any new critical errors?');
+    $content = $result->getContent();
+
+    if (!str_contains(strtolower($content), 'no critical')) {
+        echo "🚨 CRITICAL ALERT:\n" . $content . "\n";
     }
-    
-    fclose($handle);
-    sleep(1);  // Check every second
+
+    sleep(60);  // Check every minute
 }
 ```
+
+For more efficient real-time processing, consider implementing a custom `LoaderInterface` that tracks file positions or uses file watching.
 
 ## Using with Cron Jobs
 

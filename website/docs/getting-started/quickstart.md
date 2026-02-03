@@ -34,7 +34,7 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
 use Hakam\AiLogInspector\Agent\LogInspectorAgentFactory;
-use Hakam\AiLogInspector\Document\TextDocumentFactory;
+use Hakam\AiLogInspector\Document\LogDocumentFactory;
 use Symfony\Component\Uid\Uuid;
 
 // 1. Create the agent using the factory
@@ -53,7 +53,7 @@ $logs = [
 
 // 3. Index the logs
 foreach ($logs as $i => $log) {
-    $doc = TextDocumentFactory::createFromString(
+    $doc = LogDocumentFactory::createFromString(
         content: $log,
         metadata: [
             'log_id' => 'log_' . str_pad((string)$i, 3, '0', STR_PAD_LEFT),
@@ -145,21 +145,42 @@ echo $summary->getContent() . "\n";
 require_once __DIR__ . '/vendor/autoload.php';
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgentFactory;
-use Hakam\AiLogInspector\Service\LogProcessorService;
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
+use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
+use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
+use Symfony\AI\Platform\Bridge\OpenAI\PlatformFactory;
 
-// Create agent
+// Create platform and store
+$platform = PlatformFactory::create($_ENV['OPENAI_API_KEY']);
+$store = new VectorLogDocumentStore();
+
+// Create a loader pointing to your logs directory
+$loader = new CachedLogsDocumentLoader('/var/log/app');
+
+// Create indexer with the loader
+$indexer = new LogFileIndexer(
+    embeddingPlatform: $platform,
+    model: 'text-embedding-3-small',
+    loader: $loader,
+    logStore: $store,
+    chunkSize: 500,      // Characters per chunk
+    chunkOverlap: 100    // Overlap between chunks
+);
+
+// Index a specific log file
+$indexer->indexLogFile('production.log');
+
+// Or index multiple files
+$indexer->indexLogFiles(['production.log', 'errors.log']);
+
+// Or index all .log files in the directory
+$indexer->indexAllLogs();
+
+// Create agent and query
 $agent = LogInspectorAgentFactory::createWithOpenAI(
     apiKey: $_ENV['OPENAI_API_KEY']
 );
 
-// Load logs from file
-$logFile = '/var/log/app/production.log';
-$logProcessor = new LogProcessorService($agent->getIndexer());
-
-// Process and index log file
-$logProcessor->processFile($logFile);
-
-// Now query
 $result = $agent->ask('Show me all errors from the last hour');
 echo $result->getContent();
 ```

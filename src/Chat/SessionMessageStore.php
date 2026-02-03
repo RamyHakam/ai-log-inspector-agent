@@ -61,10 +61,10 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
     public function save(MessageBag $messages): void
     {
         $filePath = $this->getFilePath();
-        $data = [
+        $data     = [
             'session_id' => $this->sessionId,
             'updated_at' => (new \DateTimeImmutable())->format('Y-m-d H:i:s'),
-            'messages' => serialize($messages),
+            'messages'   => serialize($messages),
         ];
 
         file_put_contents($filePath, json_encode($data, JSON_PRETTY_PRINT));
@@ -142,8 +142,8 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
         return [
             'session_id' => $data['session_id'] ?? $this->sessionId,
             'updated_at' => $data['updated_at'] ?? null,
-            'file_path' => $filePath,
-            'file_size' => filesize($filePath),
+            'file_path'  => $filePath,
+            'file_size'  => filesize($filePath),
         ];
     }
 
@@ -159,17 +159,17 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
         }
 
         $sessions = [];
-        $files = glob($this->storagePath . '/*.session.json');
+        $files    = glob($this->storagePath . '/*.session.json');
 
         foreach ($files as $file) {
-            $data = json_decode(file_get_contents($file), true);
+            $data      = json_decode(file_get_contents($file), true);
             $sessionId = $data['session_id'] ?? basename($file, '.session.json');
 
             $sessions[$sessionId] = [
                 'session_id' => $sessionId,
                 'updated_at' => $data['updated_at'] ?? null,
-                'file_path' => $file,
-                'file_size' => filesize($file),
+                'file_path'  => $file,
+                'file_size'  => filesize($file),
             ];
         }
 

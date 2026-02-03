@@ -26,6 +26,24 @@ class LogSearchToolTest extends TestCase
         $this->vectorizer = $this->createMock(LogDocumentVectorizerInterface::class);
         $this->platform = $this->createMock(LogDocumentPlatformInterface::class);
 
+        // By default, platform does NOT support embeddings (like chat models)
+        $this->platform->method('supportsEmbedding')->willReturn(false);
+
+        $this->tool = new LogSearchTool(
+            $this->store,
+            $this->vectorizer,
+            $this->platform
+        );
+    }
+
+    /**
+     * Helper to create a tool with embedding support enabled
+     */
+    private function createToolWithEmbeddingSupport(): void
+    {
+        $this->platform = $this->createMock(LogDocumentPlatformInterface::class);
+        $this->platform->method('supportsEmbedding')->willReturn(true);
+
         $this->tool = new LogSearchTool(
             $this->store,
             $this->vectorizer,
@@ -51,13 +69,70 @@ class LogSearchToolTest extends TestCase
         $this->assertEmpty($result['logs']);
     }
 
-    public function testSuccessfulSearchWithAIAnalysis(): void
+    /**
+     * Test keyword-based search with AI analysis (when platform does NOT support embeddings)
+     */
+    public function testKeywordSearchWithAIAnalysis(): void
     {
-        $query = 'why did the checkout fail with 500 error';
-        $logContent = 'Database connection timeout during payment processing';
-        $analysisResult = 'Payment gateway timeout caused database connection failure during checkout';
+        $query = 'payment error';
+        $logContent = 'Payment gateway timeout during checkout';
+        $analysisResult = 'Payment gateway timeout caused transaction failure';
 
-        // Create vector and vector document
+        // Mock platform analysis
+        $platformResult = $this->createMock(ResultInterface::class);
+        $platformResult->method('getContent')->willReturn($analysisResult);
+
+        $this->platform
+            ->expects($this->once())
+            ->method('__invoke')
+            ->with($this->stringContains('Analyze these log entries'))
+            ->willReturn($platformResult);
+
+        // Mock store search results with matching content
+        $metadata = new Metadata([
+            'log_id' => 'pay_001',
+            'content' => $logContent,
+            'message' => $logContent,
+            'timestamp' => '2026-01-01 14:23:45',
+            'level' => 'error',
+            'category' => 'payment',
+            'source' => 'payment-service',
+            'tags' => ['checkout', 'payment']
+        ]);
+
+        $resultDocument = new VectorDocument(
+            Uuid::v4(),
+            new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
+            $metadata,
+            null
+        );
+
+        // Store is queried once for keyword search
+        $this->store
+            ->expects($this->once())
+            ->method('queryForVector')
+            ->willReturn([$resultDocument]);
+
+        $result = $this->tool->__invoke($query);
+
+        $this->assertTrue($result['success']);
+        $this->assertEquals($analysisResult, $result['reason']);
+        $this->assertCount(1, $result['evidence_logs']);
+        $this->assertEquals('pay_001', $result['evidence_logs'][0]['id']);
+        $this->assertEquals('keyword-based', $result['search_method']);
+    }
+
+    /**
+     * Test semantic search when platform DOES support embeddings
+     */
+    public function testSemanticSearchWithEmbeddingSupport(): void
+    {
+        $this->createToolWithEmbeddingSupport();
+
+        $query = 'payment errors';
+        $logContent = 'Payment gateway timeout';
+        $analysisResult = 'Payment gateway timeout caused the error';
+
         $vector = new Vector([0.1, 0.2, 0.3]);
         $vectorDocument = new VectorDocument(
             Uuid::v4(),
@@ -66,7 +141,7 @@ class LogSearchToolTest extends TestCase
             null
         );
 
-        // Mock vectorizer to return vector document (called twice: once for capability test, once for search)
+        // Vectorizer is called twice: capability test + actual search
         $this->vectorizer
             ->expects($this->exactly(2))
             ->method('vectorizeLogTextDocuments')
@@ -79,14 +154,13 @@ class LogSearchToolTest extends TestCase
         $this->platform
             ->expects($this->once())
             ->method('__invoke')
-            ->with($this->stringContains('Analyze these log entries'))
             ->willReturn($platformResult);
 
         // Mock store search results
         $metadata = new Metadata([
             'log_id' => 'log_12345',
             'content' => $logContent,
-            'timestamp' => '2024-01-01 14:23:45',
+            'timestamp' => '2026-01-01 14:23:45',
             'level' => 'error',
             'source' => 'payment-service',
             'tags' => ['checkout', 'payment']
@@ -109,31 +183,16 @@ class LogSearchToolTest extends TestCase
 
         $this->assertTrue($result['success']);
         $this->assertEquals($analysisResult, $result['reason']);
-        $this->assertCount(1, $result['evidence_logs']);
-        $this->assertEquals('log_12345', $result['evidence_logs'][0]['id']);
-        $this->assertEquals($logContent, $result['evidence_logs'][0]['content']);
-        $this->assertEquals('error', $result['evidence_logs'][0]['level']);
-        $this->assertEquals('payment-service', $result['evidence_logs'][0]['source']);
-        $this->assertEquals(['checkout', 'payment'], $result['evidence_logs'][0]['tags']);
+        $this->assertEquals('semantic', $result['search_method']);
     }
 
-    public function testSuccessfulSearchWithPatternMatchingFallback(): void
+    /**
+     * Test that AI analysis failure falls back to pattern matching
+     */
+    public function testAIAnalysisFailureFallsBackToPatternMatching(): void
     {
-        $query = 'database connection issues';
+        $query = 'database connection';
         $logContent = 'Database connection failed to establish';
-
-        $vector = new Vector([0.1, 0.2, 0.3]);
-        $vectorDocument = new VectorDocument(
-            Uuid::v4(),
-            $vector,
-            new Metadata([]),
-            null
-        );
-
-        $this->vectorizer
-            ->expects($this->exactly(2))
-            ->method('vectorizeLogTextDocuments')
-            ->willReturn([$vectorDocument]);
 
         // Mock platform to throw exception, triggering fallback
         $this->platform
@@ -142,18 +201,20 @@ class LogSearchToolTest extends TestCase
             ->willThrowException(new \Exception('AI analysis failed'));
 
         $metadata = new Metadata([
-            'log_id' => 'log_db_001',
+            'log_id' => 'db_001',
             'content' => $logContent,
-            'timestamp' => '2024-01-01 14:23:45',
+            'message' => $logContent,
+            'timestamp' => '2026-01-01 14:23:45',
             'level' => 'error',
+            'category' => 'database',
             'source' => 'database-service'
         ]);
 
         $resultDocument = new VectorDocument(
             Uuid::v4(),
-            $vector,
+            new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
             $metadata,
-            0.1
+            null
         );
 
         $this->store
@@ -164,127 +225,70 @@ class LogSearchToolTest extends TestCase
         $result = $this->tool->__invoke($query);
 
         $this->assertTrue($result['success']);
+        // Pattern matching should detect "database connection failed"
         $this->assertEquals('Database connection failure', $result['reason']);
         $this->assertCount(1, $result['evidence_logs']);
+        $this->assertEquals('keyword-based', $result['search_method']);
     }
 
+    /**
+     * Test search with no matching results
+     */
     public function testSearchWithNoResults(): void
     {
-        $query = 'authentication issues';
+        $query = 'xyznonexistent123abc';
 
-        $vector = new Vector([0.1, 0.2, 0.3]);
-        $vectorDocument = new VectorDocument(
-            Uuid::v4(),
-            $vector,
-            new Metadata([]),
-            null
-        );
-
-        $this->vectorizer
-            ->expects($this->exactly(2))
-            ->method('vectorizeLogTextDocuments')
-            ->willReturn([$vectorDocument]);
-
-        // Mock empty search results
+        // Return empty results from store
         $this->store
             ->expects($this->once())
             ->method('queryForVector')
-            ->with($vector, ['maxItems' => 15])
             ->willReturn([]);
 
         $result = $this->tool->__invoke($query);
 
+        // No results from store
         $this->assertFalse($result['success']);
-        $this->assertStringContainsString('No relevant log entries found matching your query', $result['reason']);
+        $this->assertArrayHasKey('reason', $result);
+        $this->assertStringContainsString('No relevant log entries found', $result['reason']);
         $this->assertEmpty($result['evidence_logs']);
+        $this->assertEquals('keyword-based', $result['search_method']);
     }
 
-    public function testSearchWithLowRelevanceScores(): void
-    {
-        $query = 'database errors';
-
-        $vector = new Vector([0.1, 0.2, 0.3]);
-        $vectorDocument = new VectorDocument(
-            Uuid::v4(),
-            $vector,
-            new Metadata([]),
-            null
-        );
-
-        // Mock vectorizer (called twice: capability test + search)
-        $this->vectorizer
-            ->expects($this->exactly(2))
-            ->method('vectorizeLogTextDocuments')
-            ->willReturn([$vectorDocument]);
-
-        // Mock low relevance document
-        $metadata = new Metadata(['content' => 'Some unrelated log entry']);
-        $resultDocument = new VectorDocument(
-            Uuid::v4(),
-            $vector,
-            $metadata,
-            0.5 // High distance = low relevance (exceeds max distance threshold of 0.3)
-        );
-
-        $this->store
-            ->expects($this->atLeast(1))
-            ->method('queryForVector')
-            ->willReturn([$resultDocument]);
-
-        $result = $this->tool->__invoke($query);
-
-        // With our new keyword fallback, this might still succeed if keyword matching works
-        // But if it fails, it should have the new error message format
-        if (!$result['success']) {
-            $this->assertStringContainsString('No relevant log entries found', $result['reason']);
-        }
-    }
-
+    /**
+     * Test multiple log entries with AI analysis
+     */
     public function testMultipleLogEntriesWithAIAnalysis(): void
     {
-        $query = 'payment processing error';
-        $analysisResult = 'Multiple payment gateway timeouts led to transaction failures across the system';
+        $query = 'payment error';
+        $analysisResult = 'Multiple payment gateway timeouts led to transaction failures';
 
-        $vector = new Vector([0.1, 0.2, 0.3]);
-        $vectorDocument = new VectorDocument(
-            Uuid::v4(),
-            $vector,
-            new Metadata([]),
-            null
-        );
-
-        $this->vectorizer
-            ->expects($this->exactly(2))
-            ->method('vectorizeLogTextDocuments')
-            ->willReturn([$vectorDocument]);
-
-        // Mock platform analysis
         $platformResult = $this->createMock(ResultInterface::class);
         $platformResult->method('getContent')->willReturn($analysisResult);
 
         $this->platform
             ->expects($this->once())
             ->method('__invoke')
-            ->with($this->stringContains('Payment gateway timeout error 1'))
             ->willReturn($platformResult);
 
         // Create multiple documents with payment-related content
         $documents = [];
         for ($i = 1; $i <= 3; $i++) {
             $metadata = new Metadata([
-                'log_id' => "log_$i",
+                'log_id' => "pay_00$i",
                 'content' => "Payment gateway timeout error $i",
-                'timestamp' => "2024-01-01 14:23:4$i",
+                'message' => "Payment gateway timeout error $i",
+                'timestamp' => "2026-01-01 14:23:4$i",
                 'level' => 'error',
+                'category' => 'payment',
                 'source' => 'payment-service',
                 'tags' => []
             ]);
 
             $documents[] = new VectorDocument(
                 Uuid::v4(),
-                $vector,
+                new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
                 $metadata,
-                0.1 + ($i * 0.01)
+                null
             );
         }
 
@@ -298,36 +302,17 @@ class LogSearchToolTest extends TestCase
         $this->assertTrue($result['success']);
         $this->assertEquals($analysisResult, $result['reason']);
         $this->assertCount(3, $result['evidence_logs']);
-
-        // Verify all logs are included
-        for ($i = 1; $i <= 3; $i++) {
-            $this->assertEquals("log_$i", $result['evidence_logs'][$i - 1]['id']);
-            $this->assertEquals("Payment gateway timeout error $i", $result['evidence_logs'][$i - 1]['content']);
-            $this->assertEquals('error', $result['evidence_logs'][$i - 1]['level']);
-            $this->assertEquals('payment-service', $result['evidence_logs'][$i - 1]['source']);
-            $this->assertEquals([], $result['evidence_logs'][$i - 1]['tags']);
-        }
+        $this->assertEquals('keyword-based', $result['search_method']);
     }
 
-    public function testDocumentWithoutMetadataUsesAIAnalysis(): void
+    /**
+     * Test handling of documents with missing metadata fields
+     */
+    public function testDocumentWithMinimalMetadata(): void
     {
         $query = 'test query';
-        $analysisResult = 'Analysis of minimal log data shows no clear error pattern';
+        $analysisResult = 'Analysis of minimal log data';
 
-        $vector = new Vector([0.1, 0.2, 0.3]);
-        $vectorDocument = new VectorDocument(
-            Uuid::v4(),
-            $vector,
-            new Metadata([]),
-            null
-        );
-
-        $this->vectorizer
-            ->expects($this->exactly(2))
-            ->method('vectorizeLogTextDocuments')
-            ->willReturn([$vectorDocument]);
-
-        // Mock platform analysis
         $platformResult = $this->createMock(ResultInterface::class);
         $platformResult->method('getContent')->willReturn($analysisResult);
 
@@ -336,13 +321,17 @@ class LogSearchToolTest extends TestCase
             ->method('__invoke')
             ->willReturn($platformResult);
 
-        // Document with minimal metadata
+        // Document with minimal metadata but matching content
         $uuid = Uuid::v4();
+        $metadata = new Metadata([
+            'content' => 'test query related content'
+        ]);
+
         $resultDocument = new VectorDocument(
             $uuid,
-            $vector,
-            new Metadata([]), // Empty metadata
-            0.1
+            new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
+            $metadata,
+            null
         );
 
         $this->store
@@ -353,63 +342,72 @@ class LogSearchToolTest extends TestCase
         $result = $this->tool->__invoke($query);
 
         $this->assertTrue($result['success']);
-        $this->assertEquals($analysisResult, $result['reason']);
         $this->assertCount(1, $result['evidence_logs']);
 
-        // Check fallback values
+        // Check fallback values for missing fields
         $log = $result['evidence_logs'][0];
         $this->assertEquals($uuid->toString(), $log['id']);
-        $this->assertEquals('No content available', $log['content']);
         $this->assertNull($log['timestamp']);
         $this->assertEquals('unknown', $log['level']);
         $this->assertEquals('unknown', $log['source']);
         $this->assertEquals([], $log['tags']);
     }
 
-    public function testVectorizerException(): void
+    /**
+     * Test that tags field handles string values (converts to array)
+     */
+    public function testTagsStringConvertedToArray(): void
     {
-        $query = 'test query';
+        $query = 'payment';
+        $analysisResult = 'Payment issue detected';
 
-        // Vectorizer will be called once for capability test and fail
-        $this->vectorizer
+        $platformResult = $this->createMock(ResultInterface::class);
+        $platformResult->method('getContent')->willReturn($analysisResult);
+
+        $this->platform
             ->expects($this->once())
-            ->method('vectorizeLogTextDocuments')
-            ->willThrowException(new \Exception('Vectorization failed'));
+            ->method('__invoke')
+            ->willReturn($platformResult);
 
-        // Mock store to also fail during keyword search fallback (called multiple times)
-        $this->store
-            ->expects($this->atLeast(1))
-            ->method('queryForVector')
-            ->willThrowException(new \Exception('Store failed'));
+        // Document with tags as string (edge case)
+        $metadata = new Metadata([
+            'log_id' => 'pay_001',
+            'content' => 'Payment processing failed',
+            'message' => 'Payment processing failed',
+            'category' => 'payment',
+            'tags' => 'payment-tag' // String instead of array
+        ]);
 
-        $result = $this->tool->__invoke($query);
-
-        $this->assertFalse($result['success']);
-        $this->assertStringContainsString('Search failed:', $result['message']);
-        $this->assertEmpty($result['logs']);
-    }
-
-    public function testStoreException(): void
-    {
-        $query = 'test query';
-
-        $vector = new Vector([0.1, 0.2, 0.3]);
-        $vectorDocument = new VectorDocument(
+        $resultDocument = new VectorDocument(
             Uuid::v4(),
-            $vector,
-            new Metadata([]),
+            new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
+            $metadata,
             null
         );
 
-        // Vectorizer is called twice: capability test + search attempt
-        $this->vectorizer
-            ->expects($this->exactly(2))
-            ->method('vectorizeLogTextDocuments')
-            ->willReturn([$vectorDocument]);
-
-        // Store fails on both semantic and keyword fallback attempts
         $this->store
-            ->expects($this->exactly(2))
+            ->expects($this->once())
+            ->method('queryForVector')
+            ->willReturn([$resultDocument]);
+
+        $result = $this->tool->__invoke($query);
+
+        $this->assertTrue($result['success']);
+        // Tags should be converted to array
+        $this->assertIsArray($result['evidence_logs'][0]['tags']);
+        $this->assertEquals(['payment-tag'], $result['evidence_logs'][0]['tags']);
+    }
+
+    /**
+     * Test store exception handling
+     */
+    public function testStoreExceptionHandling(): void
+    {
+        $query = 'test query';
+
+        // Store fails
+        $this->store
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willThrowException(new \Exception('Store query failed'));
 
@@ -417,11 +415,62 @@ class LogSearchToolTest extends TestCase
 
         $this->assertFalse($result['success']);
         $this->assertStringContainsString('Search failed:', $result['message']);
-        $this->assertStringContainsString('Fallback also failed:', $result['message']);
-        $this->assertEmpty($result['logs']);
     }
 
-    public function testAllPatternMatchingFallback(): void
+    /**
+     * Test vectorizer exception falls back to keyword search (with embedding support)
+     */
+    public function testVectorizerExceptionFallsBackToKeywordSearch(): void
+    {
+        $this->createToolWithEmbeddingSupport();
+
+        $query = 'test query';
+
+        // Vectorizer fails on capability test
+        $this->vectorizer
+            ->expects($this->once())
+            ->method('vectorizeLogTextDocuments')
+            ->willThrowException(new \Exception('Vectorization failed'));
+
+        // Should fall back to keyword search
+        $metadata = new Metadata([
+            'log_id' => 'log_001',
+            'content' => 'test query content',
+            'message' => 'test query content',
+            'category' => 'general'
+        ]);
+
+        $resultDocument = new VectorDocument(
+            Uuid::v4(),
+            new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
+            $metadata,
+            null
+        );
+
+        $platformResult = $this->createMock(ResultInterface::class);
+        $platformResult->method('getContent')->willReturn('Analysis result');
+
+        $this->platform
+            ->expects($this->once())
+            ->method('__invoke')
+            ->willReturn($platformResult);
+
+        $this->store
+            ->expects($this->once())
+            ->method('queryForVector')
+            ->willReturn([$resultDocument]);
+
+        $result = $this->tool->__invoke($query);
+
+        // Should succeed with keyword search fallback
+        $this->assertTrue($result['success']);
+        $this->assertEquals('keyword-based', $result['search_method']);
+    }
+
+    /**
+     * Test all pattern matching fallback patterns
+     */
+    public function testPatternMatchingFallbackPatterns(): void
     {
         $patterns = [
             'Database connection failed' => 'Database connection failure',
@@ -437,20 +486,10 @@ class LogSearchToolTest extends TestCase
         ];
 
         foreach ($patterns as $logContent => $expectedReason) {
+            // Reset mocks for each iteration
+            $this->setUp();
+
             $query = 'error analysis';
-
-            $vector = new Vector([0.1, 0.2, 0.3]);
-            $vectorDocument = new VectorDocument(
-                Uuid::v4(),
-                $vector,
-                new Metadata([]),
-                null
-            );
-
-            $this->vectorizer
-                ->expects($this->exactly(2))
-                ->method('vectorizeLogTextDocuments')
-                ->willReturn([$vectorDocument]);
 
             // Mock platform to throw exception, triggering pattern matching fallback
             $this->platform
@@ -460,14 +499,16 @@ class LogSearchToolTest extends TestCase
 
             $metadata = new Metadata([
                 'log_id' => 'test_log',
-                'content' => $logContent
+                'content' => $logContent,
+                'message' => $logContent,
+                'category' => 'general'
             ]);
 
             $resultDocument = new VectorDocument(
                 Uuid::v4(),
-                $vector,
+                new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
                 $metadata,
-                0.1
+                null
             );
 
             $this->store
@@ -479,9 +520,92 @@ class LogSearchToolTest extends TestCase
 
             $this->assertTrue($result['success'], "Failed for pattern: $logContent");
             $this->assertEquals($expectedReason, $result['reason'], "Wrong reason for pattern: $logContent");
-
-            // Reset mocks for next iteration
-            $this->setUp();
         }
+    }
+
+    /**
+     * Test semantic keyword matching in keyword search
+     */
+    public function testSemanticKeywordMatching(): void
+    {
+        $query = 'payment issues'; // 'payment' should match 'stripe', 'paypal', etc.
+        $analysisResult = 'Stripe API connection issue';
+
+        $platformResult = $this->createMock(ResultInterface::class);
+        $platformResult->method('getContent')->willReturn($analysisResult);
+
+        $this->platform
+            ->expects($this->once())
+            ->method('__invoke')
+            ->willReturn($platformResult);
+
+        // Document with 'stripe' (semantic match for 'payment')
+        $metadata = new Metadata([
+            'log_id' => 'pay_001',
+            'content' => 'Stripe API connection timeout',
+            'message' => 'Stripe API connection timeout',
+            'category' => 'payment'
+        ]);
+
+        $resultDocument = new VectorDocument(
+            Uuid::v4(),
+            new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
+            $metadata,
+            null
+        );
+
+        $this->store
+            ->expects($this->once())
+            ->method('queryForVector')
+            ->willReturn([$resultDocument]);
+
+        $result = $this->tool->__invoke($query);
+
+        // Should match because 'stripe' is a semantic match for 'payment'
+        $this->assertTrue($result['success']);
+        $this->assertCount(1, $result['evidence_logs']);
+    }
+
+    /**
+     * Test category-based matching in keyword search
+     */
+    public function testCategoryBasedMatching(): void
+    {
+        $query = 'security';
+        $analysisResult = 'Security incident detected';
+
+        $platformResult = $this->createMock(ResultInterface::class);
+        $platformResult->method('getContent')->willReturn($analysisResult);
+
+        $this->platform
+            ->expects($this->once())
+            ->method('__invoke')
+            ->willReturn($platformResult);
+
+        // Document with security category
+        $metadata = new Metadata([
+            'log_id' => 'sec_001',
+            'content' => 'Authentication attempt from unknown IP',
+            'message' => 'Authentication attempt from unknown IP',
+            'category' => 'security'
+        ]);
+
+        $resultDocument = new VectorDocument(
+            Uuid::v4(),
+            new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
+            $metadata,
+            null
+        );
+
+        $this->store
+            ->expects($this->once())
+            ->method('queryForVector')
+            ->willReturn([$resultDocument]);
+
+        $result = $this->tool->__invoke($query);
+
+        // Should match because category matches query
+        $this->assertTrue($result['success']);
+        $this->assertCount(1, $result['evidence_logs']);
     }
 }

@@ -8,10 +8,10 @@ use Symfony\AI\Chat\ChatInterface;
 use Symfony\AI\Chat\InMemory\Store as InMemoryStore;
 use Symfony\AI\Chat\ManagedStoreInterface;
 use Symfony\AI\Chat\MessageStoreInterface;
+use Symfony\AI\Platform\Message\AssistantMessage;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Message\UserMessage;
-use Symfony\AI\Platform\Message\AssistantMessage;
 
 /**
  * Conversational Log Inspector Chat

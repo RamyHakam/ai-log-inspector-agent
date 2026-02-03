@@ -2,13 +2,13 @@
 
 namespace Hakam\AiLogInspector\Tool;
 
-use Hakam\AiLogInspector\Document\TextDocumentFactory;
+use Hakam\AiLogInspector\Document\LogDocumentFactory;
 use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
 use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizerInterface;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
-use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\AI\Platform\Vector\Vector;
+use Symfony\AI\Store\Document\VectorDocument;
 use Symfony\Component\Uid\Uuid;
 
 #[AsTool(
@@ -17,8 +17,8 @@ use Symfony\Component\Uid\Uuid;
 )]
 class RequestContextTool implements LogInspectorToolInterface
 {
-    private const RELEVANCE_THRESHOLD = 0.3; // Lower threshold for identifier matching
-    private const MAX_RESULTS = 50; // Higher limit for request tracing
+    private const RELEVANCE_THRESHOLD   = 0.3; // Lower threshold for identifier matching
+    private const MAX_RESULTS           = 50; // Higher limit for request tracing
     private bool $supportsVectorization = true;
 
     public function __construct(
@@ -33,12 +33,12 @@ class RequestContextTool implements LogInspectorToolInterface
         $identifier = trim($identifier);
         if (empty($identifier)) {
             return [
-                'success' => false,
-                'message' => 'Request identifier is required. Please provide a request_id, trace_id, or session_id to track.',
-                'logs' => [],
+                'success'  => false,
+                'message'  => 'Request identifier is required. Please provide a request_id, trace_id, or session_id to track.',
+                'logs'     => [],
                 'examples' => [
                     'req_12345',
-                    'trace-abc-def-123', 
+                    'trace-abc-def-123',
                     'session_xyz789',
                     'order-uuid-456',
                     'user-session-789'
@@ -53,17 +53,17 @@ class RequestContextTool implements LogInspectorToolInterface
                 $results = $this->performVectorBasedSearch($identifier);
             } else {
                 $this->supportsVectorization = false;
-                $results = $this->performKeywordBasedSearch($identifier);
+                $results                     = $this->performKeywordBasedSearch($identifier);
             }
 
             if (empty($results)) {
                 return [
-                    'success' => false,
-                    'reason' => "No logs found containing identifier '{$identifier}'. This could mean the request hasn't been logged, the identifier format is different, or logs haven't been indexed yet.",
+                    'success'       => false,
+                    'reason'        => "No logs found containing identifier '{$identifier}'. This could mean the request hasn't been logged, the identifier format is different, or logs haven't been indexed yet.",
                     'evidence_logs' => [],
                     'search_method' => $this->supportsVectorization ? 'vector-based' : 'keyword-based',
-                    'identifier' => $identifier,
-                    'suggestions' => [
+                    'identifier'    => $identifier,
+                    'suggestions'   => [
                         'Check if the identifier format is correct',
                         'Verify logs have been properly ingested',
                         'Try searching for partial identifiers',
@@ -73,18 +73,18 @@ class RequestContextTool implements LogInspectorToolInterface
             }
 
             return $this->formatRequestContext($results, $identifier);
-            
+
         } catch (\Exception $e) {
             try {
                 $results = $this->performKeywordBasedSearch($identifier);
-                return empty($results) 
+                return empty($results)
                     ? $this->getNoResultsResponse($identifier, 'keyword-based (fallback)')
                     : $this->formatRequestContext($results, $identifier);
             } catch (\Exception $fallbackException) {
                 return [
-                    'success' => false,
-                    'message' => 'Request context search failed: ' . $e->getMessage() . ' (Fallback also failed: ' . $fallbackException->getMessage() . ')',
-                    'logs' => [],
+                    'success'    => false,
+                    'message'    => 'Request context search failed: ' . $e->getMessage() . ' (Fallback also failed: ' . $fallbackException->getMessage() . ')',
+                    'logs'       => [],
                     'identifier' => $identifier
                 ];
             }
@@ -94,28 +94,28 @@ class RequestContextTool implements LogInspectorToolInterface
     private function performVectorBasedSearch(string $identifier): array
     {
         $searchQuery = $this->buildSearchQuery($identifier);
-        
-        $queryDocument = TextDocumentFactory::createFromString($searchQuery);
+
+        $queryDocument   = LogDocumentFactory::createFromString($searchQuery);
         $vectorDocuments = $this->vectorizer->vectorizeLogTextDocuments([$queryDocument]);
-        
+
         if (empty($vectorDocuments)) {
             throw new \RuntimeException('Failed to vectorize search query');
         }
-        
+
         $queryVector = $vectorDocuments[0]->vector;
-        
+
         $searchResults = $this->store->queryForVector($queryVector, ['maxItems' => 200]);
 
         $maxDistance = 1.0 - self::RELEVANCE_THRESHOLD;
 
         $filteredResults = [];
-        $timestamps = [];
+        $timestamps      = [];
         $identifierLower = strtolower($identifier);
 
         foreach ($searchResults as $result) {
             if ($result instanceof VectorDocument) {
                 $metadata = $result->metadata;
-                $content = strtolower($metadata['content'] ?? '');
+                $content  = strtolower($metadata['content'] ?? '');
 
                 if (str_contains($content, $identifierLower)) {
                     if ($result->score === null || $result->score <= $maxDistance) {
@@ -123,55 +123,55 @@ class RequestContextTool implements LogInspectorToolInterface
                             ? $result->id->toString()
                             : (string) $result->id;
                         $timestamps[$resultId] = $this->extractTimestamp($metadata);
-                        $filteredResults[] = $result;
+                        $filteredResults[]     = $result;
                     }
                 }
             }
         }
 
         // Sort by timestamp (chronological order)
-        usort($filteredResults, function($a, $b) use ($timestamps) {
-            $idA = $a->id instanceof Uuid ? $a->id->toString() : (string) $a->id;
-            $idB = $b->id instanceof Uuid ? $b->id->toString() : (string) $b->id;
+        usort($filteredResults, function ($a, $b) use ($timestamps) {
+            $idA   = $a->id instanceof Uuid ? $a->id->toString() : (string) $a->id;
+            $idB   = $b->id instanceof Uuid ? $b->id->toString() : (string) $b->id;
             $timeA = $timestamps[$idA] ?? 0;
             $timeB = $timestamps[$idB] ?? 0;
             return $timeA <=> $timeB;
         });
-        
+
         return array_slice($filteredResults, 0, self::MAX_RESULTS);
     }
 
     private function performKeywordBasedSearch(string $identifier): array
     {
         $neutralVector = new Vector(array_fill(0, 5, 0.5));
-        $allResults = $this->store->queryForVector($neutralVector, ['maxItems' => 2000]);
+        $allResults    = $this->store->queryForVector($neutralVector, ['maxItems' => 2000]);
 
         $matchingResults = [];
-        $timestamps = [];
+        $timestamps      = [];
         $identifierLower = strtolower($identifier);
 
         foreach ($allResults as $result) {
             if ($result instanceof VectorDocument) {
                 $metadata = $result->metadata;
-                $content = strtolower($metadata['content'] ?? '');
+                $content  = strtolower($metadata['content'] ?? '');
 
                 if (str_contains($content, $identifierLower)) {
-                    $score = $this->calculateIdentifierScore($content, $identifierLower);
+                    $score        = $this->calculateIdentifierScore($content, $identifierLower);
                     $scoredResult = $result->withScore($score);
 
                     $resultId = $scoredResult->id instanceof Uuid
                         ? $scoredResult->id->toString()
                         : (string) $scoredResult->id;
                     $timestamps[$resultId] = $this->extractTimestamp($metadata);
-                    $matchingResults[] = $scoredResult;
+                    $matchingResults[]     = $scoredResult;
                 }
             }
         }
 
         // Sort by timestamp (chronological order)
-        usort($matchingResults, function($a, $b) use ($timestamps) {
-            $idA = $a->id instanceof Uuid ? $a->id->toString() : (string) $a->id;
-            $idB = $b->id instanceof Uuid ? $b->id->toString() : (string) $b->id;
+        usort($matchingResults, function ($a, $b) use ($timestamps) {
+            $idA   = $a->id instanceof Uuid ? $a->id->toString() : (string) $a->id;
+            $idB   = $b->id instanceof Uuid ? $b->id->toString() : (string) $b->id;
             $timeA = $timestamps[$idA] ?? 0;
             $timeB = $timestamps[$idB] ?? 0;
             return $timeA <=> $timeB;
@@ -185,17 +185,17 @@ class RequestContextTool implements LogInspectorToolInterface
 
         $contextTerms = [
             'request trace',
-            'request lifecycle', 
+            'request lifecycle',
             'transaction flow',
             'request processing',
             'request context',
             'trace logs',
             'request debugging'
         ];
-        
+
         $additionalContext = [];
-        $identifierLower = strtolower($identifier);
-        
+        $identifierLower   = strtolower($identifier);
+
         if (str_contains($identifierLower, 'req') || str_contains($identifierLower, 'request')) {
             $additionalContext[] = 'HTTP request processing';
         }
@@ -211,33 +211,33 @@ class RequestContextTool implements LogInspectorToolInterface
         if (str_contains($identifierLower, 'user')) {
             $additionalContext[] = 'user activity tracking';
         }
-        
+
         $query = $identifier . ' ' . implode(' ', array_merge($contextTerms, $additionalContext));
-        
+
         return $query;
     }
 
     private function calculateIdentifierScore(string $content, string $identifier): float
     {
         $score = 0.0;
-        
+
         $occurrences = substr_count($content, $identifier);
         $score += $occurrences * 0.3;
-        
+
         $position = strpos($content, $identifier);
         if ($position !== false) {
             $relativePosition = $position / strlen($content);
             $score += (1.0 - $relativePosition) * 0.2;
         }
-        
+
         if (preg_match('/\b' . preg_quote($identifier, '/') . '\b/', $content)) {
             $score += 0.3;
         }
-        
+
         if (preg_match('/(?:request_id|trace_id|session_id|transaction_id)[:\s=]' . preg_quote($identifier, '/') . '/i', $content)) {
             $score += 0.4;
         }
-        
+
         return min($score, 1.0);
     }
 
@@ -261,7 +261,7 @@ class RequestContextTool implements LogInspectorToolInterface
             '/(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?)/',
             '/\[(\d{2}\/\w{3}\/\d{4}:\d{2}:\d{2}:\d{2}[+-]\d{4})\]/', // Apache format
         ];
-        
+
         foreach ($patterns as $pattern) {
             if (preg_match($pattern, $content, $matches)) {
                 $time = strtotime($matches[1]);
@@ -270,15 +270,15 @@ class RequestContextTool implements LogInspectorToolInterface
                 }
             }
         }
-        
+
         return 0;
     }
 
     private function testVectorizationSupport(): bool
     {
         try {
-            $testDocument = TextDocumentFactory::createFromString('test identifier trace');
-            $result = $this->vectorizer->vectorizeLogTextDocuments([$testDocument]);
+            $testDocument = LogDocumentFactory::createFromString('test identifier trace');
+            $result       = $this->vectorizer->vectorizeLogTextDocuments([$testDocument]);
             return !empty($result) && isset($result[0]) && $result[0] instanceof VectorDocument;
         } catch (\Throwable $e) {
             return false;
@@ -288,14 +288,14 @@ class RequestContextTool implements LogInspectorToolInterface
     private function getNoResultsResponse(string $identifier, string $method): array
     {
         return [
-            'success' => false,
-            'reason' => "No logs found containing identifier '{$identifier}' using {$method} search.",
+            'success'       => false,
+            'reason'        => "No logs found containing identifier '{$identifier}' using {$method} search.",
             'evidence_logs' => [],
             'search_method' => $method,
-            'identifier' => $identifier,
-            'suggestions' => [
+            'identifier'    => $identifier,
+            'suggestions'   => [
                 'Check if the identifier format is correct',
-                'Verify logs have been properly ingested', 
+                'Verify logs have been properly ingested',
                 'Try searching for partial identifiers',
                 'Check if the request occurred within the indexed time range'
             ]
@@ -305,28 +305,28 @@ class RequestContextTool implements LogInspectorToolInterface
     private function formatRequestContext(array $results, string $identifier): array
     {
         $evidenceLogs = [];
-        $services = [];
-        $timeline = [];
-        $logLevels = [];
-        
+        $services     = [];
+        $timeline     = [];
+        $logLevels    = [];
+
         foreach ($results as $result) {
             if ($result instanceof VectorDocument) {
-                $metadata = $result->metadata;
-                $content = $metadata['content'] ?? 'No content available';
-                $logId = $metadata['log_id'] ?? $result->id->toString();
+                $metadata  = $result->metadata;
+                $content   = $metadata['content']     ?? 'No content available';
+                $logId     = $metadata['log_id']        ?? $result->id->toString();
                 $timestamp = $metadata['timestamp'] ?? null;
-                $level = $metadata['level'] ?? 'unknown';
-                $source = $metadata['source'] ?? 'unknown';
-                $tags = $metadata['tags'] ?? [];
+                $level     = $metadata['level']         ?? 'unknown';
+                $source    = $metadata['source']       ?? 'unknown';
+                $tags      = $metadata['tags']           ?? [];
 
                 // Build evidence logs
                 $evidenceLogs[] = [
-                    'id' => $logId,
-                    'content' => $content,
-                    'timestamp' => $timestamp,
-                    'level' => $level,
-                    'source' => $source,
-                    'tags' => $tags,
+                    'id'                  => $logId,
+                    'content'             => $content,
+                    'timestamp'           => $timestamp,
+                    'level'               => $level,
+                    'source'              => $source,
+                    'tags'                => $tags,
                     'chronological_order' => count($evidenceLogs) + 1
                 ];
 
@@ -347,20 +347,20 @@ class RequestContextTool implements LogInspectorToolInterface
 
         // Analyze the request context
         $analysis = $this->analyzeRequestContext($evidenceLogs, $identifier);
-        
+
         return [
-            'success' => true,
-            'reason' => $analysis['summary'],
-            'root_cause' => $analysis['root_cause'],
-            'evidence_logs' => $evidenceLogs,
-            'request_timeline' => $timeline,
+            'success'           => true,
+            'reason'            => $analysis['summary'],
+            'root_cause'        => $analysis['root_cause'],
+            'evidence_logs'     => $evidenceLogs,
+            'request_timeline'  => $timeline,
             'services_involved' => $services,
-            'log_levels' => $logLevels,
-            'total_logs' => count($evidenceLogs),
-            'time_span' => $this->calculateTimeSpan($evidenceLogs),
-            'search_method' => $this->supportsVectorization ? 'vector-based' : 'keyword-based',
-            'identifier' => $identifier,
-            'confidence' => $analysis['confidence']
+            'log_levels'        => $logLevels,
+            'total_logs'        => count($evidenceLogs),
+            'time_span'         => $this->calculateTimeSpan($evidenceLogs),
+            'search_method'     => $this->supportsVectorization ? 'vector-based' : 'keyword-based',
+            'identifier'        => $identifier,
+            'confidence'        => $analysis['confidence']
         ];
     }
 
@@ -371,16 +371,16 @@ class RequestContextTool implements LogInspectorToolInterface
         }
 
         $eventPatterns = [
-            'started' => '/(?:started|begin|initiated|commenced)/i',
-            'completed' => '/(?:completed|finished|success|done)/i',
-            'failed' => '/(?:failed|error|exception|timeout|abort)/i',
-            'warning' => '/(?:warning|warn|caution)/i',
-            'timeout' => '/(?:timeout|timed out|expired)/i',
-            'retry' => '/(?:retry|retrying|attempt)/i',
+            'started'        => '/(?:started|begin|initiated|commenced)/i',
+            'completed'      => '/(?:completed|finished|success|done)/i',
+            'failed'         => '/(?:failed|error|exception|timeout|abort)/i',
+            'warning'        => '/(?:warning|warn|caution)/i',
+            'timeout'        => '/(?:timeout|timed out|expired)/i',
+            'retry'          => '/(?:retry|retrying|attempt)/i',
             'authentication' => '/(?:auth|login|authenticate)/i',
-            'database' => '/(?:database|db|sql|query)/i',
-            'payment' => '/(?:payment|transaction|charge)/i',
-            'api_call' => '/(?:api|http|request|response)/i'
+            'database'       => '/(?:database|db|sql|query)/i',
+            'payment'        => '/(?:payment|transaction|charge)/i',
+            'api_call'       => '/(?:api|http|request|response)/i'
         ];
 
         $eventType = 'info';
@@ -392,10 +392,10 @@ class RequestContextTool implements LogInspectorToolInterface
         }
 
         return [
-            'timestamp' => $timestamp,
-            'event_type' => $eventType,
+            'timestamp'   => $timestamp,
+            'event_type'  => $eventType,
             'description' => $this->extractEventDescription($content),
-            'source' => $source
+            'source'      => $source
         ];
     }
 
@@ -409,7 +409,7 @@ class RequestContextTool implements LogInspectorToolInterface
             '/^\[\w+\]\s*/',
             '/^[\d\.\-\s:]+\s+\w+\s+/',
         ];
-        
+
         foreach ($cleanPatterns as $pattern) {
             $content = preg_replace($pattern, '', $content);
         }
@@ -417,7 +417,7 @@ class RequestContextTool implements LogInspectorToolInterface
         if (strlen($content) > 100) {
             $content = substr($content, 0, 97) . '...';
         }
-        
+
         return $content ?: 'Log event';
     }
 
@@ -443,14 +443,14 @@ class RequestContextTool implements LogInspectorToolInterface
 
         sort($timestamps);
         $firstTime = reset($timestamps);
-        $lastTime = end($timestamps);
-        $duration = $lastTime - $firstTime;
+        $lastTime  = end($timestamps);
+        $duration  = $lastTime - $firstTime;
 
         return [
-            'start_time' => date('Y-m-d H:i:s', $firstTime),
-            'end_time' => date('Y-m-d H:i:s', $lastTime),
+            'start_time'       => date('Y-m-d H:i:s', $firstTime),
+            'end_time'         => date('Y-m-d H:i:s', $lastTime),
             'duration_seconds' => $duration,
-            'duration_human' => $this->humanReadableDuration($duration)
+            'duration_human'   => $this->humanReadableDuration($duration)
         ];
     }
 
@@ -461,9 +461,9 @@ class RequestContextTool implements LogInspectorToolInterface
         } elseif ($seconds < 3600) {
             return floor($seconds / 60) . 'm ' . ($seconds % 60) . 's';
         } else {
-            $hours = floor($seconds / 3600);
+            $hours   = floor($seconds / 3600);
             $minutes = floor(($seconds % 3600) / 60);
-            $secs = $seconds % 60;
+            $secs    = $seconds % 60;
             return $hours . 'h ' . $minutes . 'm ' . $secs . 's';
         }
     }
@@ -472,7 +472,7 @@ class RequestContextTool implements LogInspectorToolInterface
     {
         if (empty($evidenceLogs)) {
             return [
-                'summary' => 'No request context found',
+                'summary'    => 'No request context found',
                 'root_cause' => 'Unable to locate any logs for the provided identifier',
                 'confidence' => 'Low'
             ];
@@ -480,7 +480,7 @@ class RequestContextTool implements LogInspectorToolInterface
 
         try {
             // Combine all log contents for AI analysis
-            $logContents = array_map(fn($log) => $log['content'], $evidenceLogs);
+            $logContents  = array_map(fn ($log) => $log['content'], $evidenceLogs);
             $combinedLogs = implode("\n", $logContents);
 
             $analysisPrompt = "Analyze this request lifecycle trace for identifier '{$identifier}'. Focus on:\n\n" .
@@ -493,11 +493,11 @@ class RequestContextTool implements LogInspectorToolInterface
                 "Provide a structured analysis with Summary, Root Cause (if applicable), and Confidence level.";
 
             $analysisResult = $this->platform->__invoke($analysisPrompt);
-            $analysis = $analysisResult->getContent();
+            $analysis       = $analysisResult->getContent();
 
             // Parse the AI response to extract components
             return $this->parseAIAnalysis($analysis);
-            
+
         } catch (\Exception $e) {
             // Fallback to pattern-based analysis
             return $this->performPatternBasedAnalysis($evidenceLogs);
@@ -508,15 +508,15 @@ class RequestContextTool implements LogInspectorToolInterface
     {
         if ($analysis === null || trim($analysis) === '') {
             return [
-                'summary' => 'Request context analysis completed',
-                'root_cause' => 'Analysis provided in summary', 
-                'confidence' => 'Medium',
+                'summary'       => 'Request context analysis completed',
+                'root_cause'    => 'Analysis provided in summary',
+                'confidence'    => 'Medium',
                 'full_analysis' => 'No AI analysis available'
             ];
         }
-        
-        $summary = 'Request context analysis completed';
-        $rootCause = 'Analysis provided in summary';
+
+        $summary    = 'Request context analysis completed';
+        $rootCause  = 'Analysis provided in summary';
         $confidence = 'Medium';
 
         // Look for specific patterns in the response
@@ -535,22 +535,22 @@ class RequestContextTool implements LogInspectorToolInterface
         }
 
         return [
-            'summary' => $summary,
-            'root_cause' => $rootCause,
-            'confidence' => $confidence,
+            'summary'       => $summary,
+            'root_cause'    => $rootCause,
+            'confidence'    => $confidence,
             'full_analysis' => $analysis
         ];
     }
 
     private function performPatternBasedAnalysis(array $evidenceLogs): array
     {
-        $errorCount = 0;
+        $errorCount   = 0;
         $warningCount = 0;
         $successCount = 0;
         $commonIssues = [];
 
         foreach ($evidenceLogs as $log) {
-            $level = strtolower($log['level']);
+            $level   = strtolower($log['level']);
             $content = strtolower($log['content']);
 
             switch ($level) {
@@ -579,15 +579,15 @@ class RequestContextTool implements LogInspectorToolInterface
             }
         }
 
-        $totalLogs = count($evidenceLogs);
-        $summary = "Request trace contains {$totalLogs} log entries";
-        $rootCause = 'Normal request processing';
+        $totalLogs  = count($evidenceLogs);
+        $summary    = "Request trace contains {$totalLogs} log entries";
+        $rootCause  = 'Normal request processing';
         $confidence = 'Medium';
 
         if ($errorCount > 0) {
             $summary .= " with {$errorCount} errors";
             $confidence = 'High';
-            
+
             if (isset($commonIssues['timeout'])) {
                 $rootCause = 'Request failed due to timeout issues';
             } elseif (isset($commonIssues['failure'])) {
@@ -600,12 +600,12 @@ class RequestContextTool implements LogInspectorToolInterface
             $rootCause = 'Request completed with warnings';
         } else {
             $summary .= " - appears successful";
-            $rootCause = 'Request processed successfully';
+            $rootCause  = 'Request processed successfully';
             $confidence = 'High';
         }
 
         return [
-            'summary' => $summary,
+            'summary'    => $summary,
             'root_cause' => $rootCause,
             'confidence' => $confidence
         ];

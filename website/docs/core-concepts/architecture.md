@@ -27,6 +27,15 @@ The AI Log Inspector Agent follows a modular, tool-based architecture built on t
          │
          ▼
 ┌──────────────────────────────────────────────────────────┐
+│                    Indexer Layer                          │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │ VectorLogDocumentIndexer                            │ │
+│  │  • Loader → Transformers → Vectorizer → Store      │ │
+│  └─────────────────────────────────────────────────────┘ │
+└───────────────────────────┬──────────────────────────────┘
+                            │
+                            ▼
+┌──────────────────────────────────────────────────────────┐
 │                    Storage Layer                          │
 │                                                           │
 │  ┌────────────────┐         ┌──────────────────────┐    │
@@ -163,27 +172,72 @@ $results = $store->queryForVector($queryVector, ['maxItems' => 10]);
 - **ChromaStore**: Production-ready, self-hosted
 - **PineconeStore**: Managed cloud service
 
-### 5. Vectorization Pipeline
+### 5. Indexer Pipeline
 
-Converts text logs into semantic vectors for similarity search.
+The `VectorLogDocumentIndexer` provides a complete pipeline for loading, transforming, vectorizing, and storing log documents.
+
+```php
+use Hakam\AiLogInspector\Indexer\LogFileIndexer;
+use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
+use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
+
+// Create a loader for your log files
+$loader = new CachedLogsDocumentLoader('/var/log/app');
+
+// Create the indexer
+$indexer = new LogFileIndexer(
+    embeddingPlatform: $platform,
+    model: 'text-embedding-3-small',
+    loader: $loader,
+    logStore: new VectorLogDocumentStore(),
+    chunkSize: 500,      // Characters per text chunk
+    chunkOverlap: 100    // Overlap between chunks for context
+);
+
+// Index methods
+$indexer->indexLogFile('app.log');           // Single file
+$indexer->indexLogFiles(['a.log', 'b.log']); // Multiple files
+$indexer->indexAllLogs();                    // All .log files
+```
+
+**Process:**
+1. Loader reads log files from disk
+2. TextSplitTransformer chunks large documents
+3. Vectorizer converts chunks to embeddings via AI API
+4. VectorDocuments stored in Vector Store
+
+### 6. Vectorizer
+
+The vectorizer converts text documents into vector embeddings:
 
 ```php
 use Hakam\AiLogInspector\Vectorizer\LogDocumentVectorizer;
 
-$vectorizer = new LogDocumentVectorizer($platform, $model);
+$vectorizer = new LogDocumentVectorizer($platform, 'text-embedding-3-small');
 
 // Convert text documents to vector documents
 $textDocs = [/* TextDocument objects */];
 $vectorDocs = $vectorizer->vectorizeLogTextDocuments($textDocs);
 ```
 
-**Process:**
-1. Text log → TextDocument (with metadata)
-2. TextDocument → AI embedding API
-3. Embedding → VectorDocument (1536-dim vector)
-4. VectorDocument → Vector Store
-
 ## Data Flow
+
+### Indexing Flow
+
+```
+Log Files (*.log)
+    ├─▶ CachedLogsDocumentLoader
+    │       └─▶ Reads files from disk
+    │
+    ├─▶ TextSplitTransformer
+    │       └─▶ Chunks large documents (500 chars, 100 overlap)
+    │
+    ├─▶ Vectorizer
+    │       └─▶ Calls AI embedding API (e.g., text-embedding-3-small)
+    │
+    └─▶ VectorLogDocumentStore
+            └─▶ Stores VectorDocuments for similarity search
+```
 
 ### Single Question Flow
 
