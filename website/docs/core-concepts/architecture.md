@@ -96,11 +96,10 @@ class LogSearchTool
 {
     public function __invoke(string $query): array
     {
-        // 1. Vectorize query
-        // 2. Search vector store
-        // 3. Filter by relevance
-        // 4. AI analysis
-        // 5. Return structured results
+        // 1. Retrieve via LogRetriever (vectorize + search)
+        // 2. Filter by relevance threshold
+        // 3. AI analysis of matching logs
+        // 4. Return structured results with evidence
     }
 }
 ```
@@ -237,53 +236,238 @@ The `LogRetriever` implements `LogRetrieverInterface` and is used by both `LogSe
 
 ## Data Flow
 
-### Indexing Flow
+### Flow 1: Log File to Store (Indexing)
+
+This flow shows how raw log files are ingested, transformed, and stored as searchable vector documents.
 
 ```
-Log Files (*.log)
-    ├─▶ CachedLogsDocumentLoader
-    │       └─▶ Reads files from disk
-    │
-    ├─▶ TextSplitTransformer
-    │       └─▶ Chunks large documents (500 chars, 100 overlap)
-    │
-    ├─▶ Vectorizer
-    │       └─▶ Calls AI embedding API (e.g., text-embedding-3-small)
-    │
-    └─▶ VectorLogDocumentStore
-            └─▶ Stores VectorDocuments for similarity search
+┌─────────────────────────────────────────────────────────────────────┐
+│  LOG FILES ON DISK                                                  │
+│  /var/log/app/*.log                                                 │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  1. LOADER                                                          │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ CachedLogsDocumentLoader / TextFileLoader / InMemoryLoader    │ │
+│  │                                                                │ │
+│  │  • Reads raw log files from disk (or memory)                  │ │
+│  │  • Produces iterable<TextDocument>                            │ │
+│  │  • Each TextDocument = content string + metadata              │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ TextDocument[]
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  2. TRANSFORMER                                                     │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ TextSplitTransformer                                          │ │
+│  │                                                                │ │
+│  │  • Splits large documents into smaller chunks                 │ │
+│  │  • chunkSize: 500 characters per chunk                        │ │
+│  │  • chunkOverlap: 100 characters overlap for context           │ │
+│  │  • One large log → multiple TextDocument chunks               │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ TextDocument[] (chunked)
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  3. VECTORIZER                                                      │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ Symfony Vectorizer (via VectorizerFactory)                    │ │
+│  │                                                                │ │
+│  │  • Calls AI Embedding API (e.g., text-embedding-3-small)     │ │
+│  │  • Converts each text chunk → 1536-dim float vector          │ │
+│  │  • TextDocument → VectorDocument (text + vector + metadata)   │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│  Uses: PlatformInterface (OpenAI / Anthropic / Ollama)             │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ VectorDocument[]
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  4. STORE                                                           │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ VectorLogDocumentStore                                        │ │
+│  │                                                                │ │
+│  │  • Persists VectorDocuments with embeddings + metadata        │ │
+│  │  • Supports queryForVector() for similarity search            │ │
+│  │  • Backend: InMemoryStore / ChromaStore / PineconeStore       │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Single Question Flow
+**Orchestrated by:**
 
 ```
-User Query
-    ├─▶ LogInspectorAgent
-    │       ├─▶ Selects Tool (LogSearchTool)
-    │       │       ├─▶ Retrieve via LogRetriever
-    │       │       ├─▶ Filter Results by Relevance
-    │       │       └─▶ AI Analysis
-    │       └─▶ Format Response
-    └─▶ Return to User
+┌─────────────────────────────────────────────────────────────────────┐
+│  AbstractLogIndexer (base class)                                    │
+│  ├── LogFileIndexer    → indexLogFile() / indexAllLogs()            │
+│  └── LogDocumentIndexer → indexLogDocuments()                       │
+│                                                                     │
+│  Constructor wires: Loader + Transformer + Vectorizer + Store      │
+│  into a Symfony AI Indexer pipeline that runs steps 1→2→3→4        │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-### Conversational Flow
+### Flow 2: User Ask and Chat
+
+This flow shows how a user question is processed, routed to the right tool, and answered with evidence from the vector store.
+
+#### Single Question (LogInspectorAgent)
 
 ```
-Investigation Start
-    ├─▶ LogInspectorChat
-    │       ├─▶ Initialize with System Prompt
-    │       └─▶ Store in Message Store
-    │
-User Question 1
-    ├─▶ Add to Message History
-    ├─▶ LogInspectorAgent (with context)
-    ├─▶ Store Response
-    │
-User Question 2 (Follow-up)
-    ├─▶ Add to Message History
-    ├─▶ LogInspectorAgent (with full context)
-    └─▶ Store Response with correlation
+┌─────────────────────────────────────────────────────────────────────┐
+│  USER QUESTION                                                      │
+│  "Why did the payment fail for order 12345?"                        │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  1. LogInspectorAgent                                               │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  • Wraps Symfony AI Agent                                     │ │
+│  │  • Creates MessageBag (system prompt + user question)         │ │
+│  │  • Sends to LLM via LogDocumentPlatform                      │ │
+│  │  • LLM decides which tool to call based on question           │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ LLM selects tool
+                    ┌──────────┴──────────┐
+                    ▼                     ▼
+┌──────────────────────────┐  ┌──────────────────────────────────────┐
+│  LogSearchTool           │  │  RequestContextTool                  │
+│  (general log search)    │  │  (request/trace ID lookup)           │
+│                          │  │                                      │
+│  Triggered by:           │  │  Triggered by:                       │
+│  "payment errors"        │  │  "debug request req_12345"           │
+│  "database timeouts"     │  │  "trace trace_abc123"                │
+│  "what errors occurred?" │  │  "session sess_xyz789"               │
+└────────────┬─────────────┘  └──────────────────┬───────────────────┘
+             │                                    │
+             ▼                                    ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  2. SEMANTIC SEARCH (primary strategy)                              │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ LogRetriever                                                  │ │
+│  │  • Wraps Symfony Retriever internally                         │ │
+│  │  • Vectorizes query text → embedding vector                   │ │
+│  │  • Searches VectorLogDocumentStore by cosine similarity       │ │
+│  │  • Returns VectorDocument[] ranked by relevance               │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│  On \Throwable → automatic fallback ▼                              │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ KEYWORD SEARCH (fallback)                                     │ │
+│  │  • Retrieves all docs via neutral vector                      │ │
+│  │  • Scores by: direct match, category, level, tags, synonyms  │ │
+│  │  • Sorts by score, applies threshold                          │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ VectorDocument[] (filtered)
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  3. FILTER & FORMAT                                                 │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ LogSearchTool                     │ RequestContextTool         │ │
+│  │  • Filter by relevance ≥ 0.7     │ • Filter by identifier     │ │
+│  │  • Extract: content, log_id,     │ • Sort chronologically     │ │
+│  │    timestamp, level, source, tags │ • Build request timeline   │ │
+│  │                                   │ • Group by service         │ │
+│  │                                   │ • Calculate time span      │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ evidence logs
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  4. AI ANALYSIS                                                     │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ LogDocumentPlatform.__invoke()                                │ │
+│  │                                                                │ │
+│  │  • Sends evidence logs to LLM with analysis prompt            │ │
+│  │  • LLM generates: root cause explanation, summary             │ │
+│  │  • On failure → fallback to pattern-based analysis            │ │
+│  │    (regex matching: timeout, database, payment, etc.)         │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ structured result
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  5. AGENT RESPONSE                                                  │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │  • Tool returns structured array to Symfony Agent             │ │
+│  │  • Agent incorporates evidence into final LLM call            │ │
+│  │  • LLM generates natural language response with citations     │ │
+│  │  • Returns ResultInterface to user                            │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+│                                                                     │
+│  Response includes:                                                 │
+│  • success: bool        • evidence_logs: [{id, content, ...}]      │
+│  • reason: string       • search_method: 'semantic'|'keyword-based'│
+│  • root_cause: string   • services_involved (RequestContextTool)   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+#### Conversational Flow (LogInspectorChat)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  INVESTIGATION START                                                │
+│  $chat->startInvestigation('Payment incident - Jan 29')            │
+│                                                                     │
+│  ┌────────────────────────────────────────────────────────────────┐ │
+│  │ LogInspectorChat                                              │ │
+│  │  • Creates system prompt with investigation context           │ │
+│  │  • Initializes MessageStore (Session or InMemory)             │ │
+│  │  • Wraps Symfony Chat for conversation management             │ │
+│  └────────────────────────────────────────────────────────────────┘ │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │
+                               ▼
+┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+  TURN 1: "What payment errors occurred?"
+│                                                                     │
+  ┌───────────────┐    ┌───────────────┐    ┌──────────────────────┐
+│ │ User Message  │───▶│ Message Store │───▶│ LogInspectorAgent    │ │
+  │               │    │ (append)      │    │ (full history)       │
+│ └───────────────┘    └───────────────┘    └──────────┬───────────┘ │
+                                                        │
+│                                            Runs Ask Flow above     │
+                                                        │
+│ ┌───────────────┐    ┌───────────────┐               │            │
+  │ AI Response   │◀───│ Message Store │◀──────────────┘
+│ │ + log refs    │    │ (append)      │                             │
+  └───────────────┘    └───────────────┘
+└ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+                               │
+                               ▼
+┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+  TURN 2: "Were there database issues related to those?"
+│                                                                     │
+  ┌───────────────┐    ┌───────────────┐    ┌──────────────────────┐
+│ │ User Message  │───▶│ Message Store │───▶│ LogInspectorAgent    │ │
+  │               │    │ (Turn 1 +     │    │ (sees Turn 1 context │
+│ └───────────────┘    │  Turn 2)      │    │  + new question)     │ │
+                       └───────────────┘    └──────────┬───────────┘
+│                                                       │            │
+                                             Runs Ask Flow above
+│                                            with conversation       │
+                                             context preserved
+│                                                       │            │
+  ┌───────────────┐    ┌───────────────┐               │
+│ │ AI Response   │◀───│ Message Store │◀──────────────┘             │
+  │ (contextual)  │    │ (append)      │
+│ └───────────────┘    └───────────────┘                             │
+└ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
+                               │
+                               ▼
+┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
+  TURN N: "What was the root cause?"
+│                                                                     │
+  Agent has full conversation history (Turn 1..N-1)
+│ and can correlate findings across all previous answers              │
+└ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┘
 ```
 
 ## Semantic Search Explained
