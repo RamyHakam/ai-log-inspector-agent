@@ -2,22 +2,27 @@
 
 namespace Hakam\AiLogInspector\Platform;
 
-use Hakam\AiLogInspector\Model\LogDocumentModelInterface;
-use Symfony\AI\Platform\Bridge\Ollama\Ollama;
-use Symfony\AI\Platform\Message\Content\Text;
+use Hakam\AiLogInspector\Enum\PlatformEnum;
+use Symfony\AI\Platform\Bridge\Anthropic\PlatformFactory as AnthropicPlatformFactory;
+use Symfony\AI\Platform\Bridge\Ollama\PlatformFactory as OllamaPlatformFactory;
+use Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory as OpenAiPlatformFactory;
+use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
-use Symfony\AI\Platform\Message\UserMessage;
 use Symfony\AI\Platform\Model;
+use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\PlatformInterface;
+use Symfony\AI\Platform\Result\DeferredResult;
 use Symfony\AI\Platform\Result\ResultInterface;
-use Symfony\Component\HttpClient\Exception\ClientException;
 
-class LogDocumentPlatform implements LogDocumentPlatformInterface
+readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
 {
+    protected PlatformInterface $platform;
+
     public function __construct(
-        private readonly PlatformInterface $platform,
-        private readonly LogDocumentModelInterface $model,
+        private PlatformEnum $platformType,
+        private array $config,
     ) {
+        $this->platform = $this->initPlatform();
     }
 
     public function getPlatform(): PlatformInterface
@@ -25,50 +30,51 @@ class LogDocumentPlatform implements LogDocumentPlatformInterface
         return $this->platform;
     }
 
-    public function __invoke($query, array $options = []): ResultInterface
-    {
-        // Ensure options is always an array
-        if (!is_array($options)) {
-            $options = [];
-        }
-
-        // Convert string queries to MessageBag for all platforms
-        if (is_string($query)) {
-            $content = new Text($query);
-            $message = new UserMessage($content);
-            $query = new MessageBag($message);
-        }
-
-        try {
-            $resultPromise = $this->platform->invoke($this->model->getModel()->getName(), $query, $options);
-
-            return $resultPromise->getResult();
-        } catch (ClientException $e) {
-            // Handle common Ollama API compatibility issues
-            $errorMessage = $e->getMessage();
-
-            if (str_contains($errorMessage, '404') && str_contains($errorMessage, '/api/show')) {
-                throw new \RuntimeException('Ollama API endpoint "/api/show" not found. This indicates an incompatible Ollama version. Please ensure you are using Ollama v0.1.0+ and the model "'.$this->model->getModel()->getName().'" is properly loaded. Try: ollama pull '.$this->model->getModel()->getName(), 0, $e);
-            }
-
-            if (str_contains($errorMessage, '404')) {
-                throw new \RuntimeException('Ollama API endpoint not found. Please ensure Ollama is running on the correct host and the API is accessible.', 0, $e);
-            }
-
-            throw $e;
-        }
-    }
-
     public function getModel(): Model
     {
-        return $this->model->getModel();
+        $modelName = $this->getDefaultModel();
+        $catalog = $this->platform->getModelCatalog();
+
+        return $catalog->getModel($modelName);
     }
 
-    /**
-     * Check if the platform/model supports embeddings for vectorization.
-     */
-    public function supportsEmbedding(): bool
+    public function getModelCatalog(): ModelCatalogInterface
     {
-        return $this->model->supportsEmbedding();
+        return $this->platform->getModelCatalog();
+    }
+
+    public function invoke(string $model, object|array|string $input, array $options = []): DeferredResult
+    {
+        return $this->platform->invoke($model, $input, $options);
+    }
+
+    public function __invoke(string|array $input): ResultInterface
+    {
+        $model = $this->getDefaultModel();
+
+        // Convert string input to MessageBag for platform compatibility
+        if (is_string($input)) {
+            $input = new MessageBag(Message::ofUser($input));
+        }
+
+        return $this->platform->invoke($model, $input)->getResult();
+    }
+
+    protected function initPlatform(): PlatformInterface
+    {
+        return match ($this->platformType) {
+            PlatformEnum::OPENAI => OpenAiPlatformFactory::create($this->config['api_key']),
+            PlatformEnum::ANTHROPIC => AnthropicPlatformFactory::create($this->config['api_key']),
+            PlatformEnum::OLLAMA => OllamaPlatformFactory::create($this->config['host']),
+        };
+    }
+
+    protected function getDefaultModel(): string
+    {
+        return $this->config['model'] ?? match ($this->platformType) {
+            PlatformEnum::OPENAI => 'gpt-4o-mini',
+            PlatformEnum::ANTHROPIC => 'claude-3-5-sonnet-20241022',
+            PlatformEnum::OLLAMA => 'llama3.1',
+        };
     }
 }

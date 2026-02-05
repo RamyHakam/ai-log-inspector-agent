@@ -2,14 +2,13 @@
 
 namespace Hakam\AiLogInspector\Test\Integration;
 
-use Hakam\AiLogInspector\Model\LogDocumentModel;
-use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Hakam\AiLogInspector\Retriever\LogRetrieverInterface;
 use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use PHPUnit\Framework\TestCase;
-use Symfony\AI\Platform\Capability;
 use Symfony\AI\Platform\Model;
+use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
@@ -23,9 +22,8 @@ use Symfony\Component\Uid\Uuid;
 class LogSearchToolIntegrationTest extends TestCase
 {
     private InMemoryPlatform $symfonyPlatform;
-    private LogDocumentPlatform $platform;
+    private LogDocumentPlatformInterface $platform;
     private Store $store;
-    private LogDocumentModel $model;
     private VectorLogStoreInterface $mockStore;
     private LogRetrieverInterface $mockRetriever;
     private LogSearchTool $tool;
@@ -33,7 +31,6 @@ class LogSearchToolIntegrationTest extends TestCase
     protected function setUp(): void
     {
         $this->store = new Store();
-        $this->model = new LogDocumentModel('test-model', [Capability::TOOL_CALLING]);
 
         $this->symfonyPlatform = new InMemoryPlatform(
             function (Model $model, array|string|object $input, array $options = []) {
@@ -41,9 +38,9 @@ class LogSearchToolIntegrationTest extends TestCase
             }
         );
 
-        $this->platform = new LogDocumentPlatform($this->symfonyPlatform, $this->model);
-
         $this->setupRealWorldLogData();
+
+        $this->platform = $this->createMockLogDocumentPlatform();
 
         // Create mock interfaces for LogSearchTool
         $this->mockStore = $this->createMockVectorLogStore();
@@ -54,6 +51,34 @@ class LogSearchToolIntegrationTest extends TestCase
             $this->mockRetriever,
             $this->platform
         );
+    }
+
+    private function createMockLogDocumentPlatform(): LogDocumentPlatformInterface
+    {
+        $mockModel = $this->createMock(Model::class);
+        $mockModel->method('getName')->willReturn('test-model');
+
+        $mockCatalog = $this->createMock(ModelCatalogInterface::class);
+        $mockCatalog->method('getModel')->willReturn($mockModel);
+
+        $platform = $this->createMock(LogDocumentPlatformInterface::class);
+        $platform->method('getPlatform')->willReturn($this->symfonyPlatform);
+        $platform->method('getModel')->willReturn($mockModel);
+        $platform->method('getModelCatalog')->willReturn($mockCatalog);
+
+        // Mock invoke to delegate to InMemoryPlatform
+        $platform->method('invoke')->willReturnCallback(
+            fn (string $model, object|array|string $input, array $options = []) => $this->symfonyPlatform->invoke($model, $input, $options)
+        );
+
+        // Mock __invoke for direct platform calls
+        $platform->method('__invoke')->willReturnCallback(
+            function (string|array $input): ResultInterface {
+                return $this->handleRequest($input);
+            }
+        );
+
+        return $platform;
     }
 
     private function handleRequest(array|string|object $input): ResultInterface

@@ -3,13 +3,12 @@
 namespace Hakam\AiLogInspector\Test\Integration;
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
-use Hakam\AiLogInspector\Model\LogDocumentModel;
-use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
-use Hakam\AiLogInspector\Tool\LogSearchTool;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
-use Symfony\AI\Platform\Capability;
 use Symfony\AI\Platform\Model;
+use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
+use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
 use Symfony\AI\Platform\Test\InMemoryPlatform;
@@ -25,21 +24,14 @@ use Symfony\Component\Uid\Uuid;
 class SimpleIntegrationTest extends TestCase
 {
     private InMemoryPlatform $symfonyPlatform;
-    private LogDocumentPlatform $platform;
+    private LogDocumentPlatformInterface $platform;
     private Store $store;
-    private LogDocumentModel $model;
     private LogInspectorAgent $agent;
-    private object $tool; // Using object type for flexibility with mock tools
+    private object $tool;
 
     protected function setUp(): void
     {
         $this->store = new Store();
-
-        // Create model with tool calling capability
-        $this->model = new LogDocumentModel(
-            'integration-test-model',
-            [Capability::TOOL_CALLING, Capability::INPUT_TEXT, Capability::OUTPUT_TEXT]
-        );
 
         $this->setupTestLogData();
 
@@ -50,7 +42,7 @@ class SimpleIntegrationTest extends TestCase
             }
         );
 
-        $this->platform = new LogDocumentPlatform($this->symfonyPlatform, $this->model);
+        $this->platform = $this->createMockLogDocumentPlatform();
 
         // Create mock tool for the agent
         $tools = [$this->createMockLogSearchTool()];
@@ -65,7 +57,35 @@ class SimpleIntegrationTest extends TestCase
         $this->tool = $this->createDirectLogSearchTool();
     }
 
-    private function handleRequest(array|string|object $input): \Symfony\AI\Platform\Result\ResultInterface
+    private function createMockLogDocumentPlatform(): LogDocumentPlatformInterface
+    {
+        $mockModel = $this->createMock(Model::class);
+        $mockModel->method('getName')->willReturn('test-model');
+
+        $mockCatalog = $this->createMock(ModelCatalogInterface::class);
+        $mockCatalog->method('getModel')->willReturn($mockModel);
+
+        $platform = $this->createMock(LogDocumentPlatformInterface::class);
+        $platform->method('getPlatform')->willReturn($this->symfonyPlatform);
+        $platform->method('getModel')->willReturn($mockModel);
+        $platform->method('getModelCatalog')->willReturn($mockCatalog);
+
+        // Mock invoke to delegate to InMemoryPlatform
+        $platform->method('invoke')->willReturnCallback(
+            fn (string $model, object|array|string $input, array $options = []) => $this->symfonyPlatform->invoke($model, $input, $options)
+        );
+
+        // Mock __invoke for direct platform calls
+        $platform->method('__invoke')->willReturnCallback(
+            function (string|array $input): ResultInterface {
+                return $this->handleRequest($input);
+            }
+        );
+
+        return $platform;
+    }
+
+    private function handleRequest(array|string|object $input): ResultInterface
     {
         // Handle different input types from the agent
         if (is_string($input)) {
@@ -91,9 +111,6 @@ class SimpleIntegrationTest extends TestCase
         } else {
             $inputString = '';
         }
-
-        // Debug: echo the input to understand what's being sent
-        // echo "DEBUG: Input received: '$inputString'\n";
 
         // Vector generation for queries (shorter inputs without "Analyze")
         if (!str_contains($inputString, 'Analyze these log entries')) {
@@ -192,11 +209,14 @@ class SimpleIntegrationTest extends TestCase
 
     private function createMockLogSearchTool(): object
     {
-        return new #[AsTool(name: 'log_search', description: 'Search logs for simple testing')] class($this->store, $this->platform) {
-            private Store $store;
-            private LogDocumentPlatform $platform;
+        $store = $this->store;
+        $platform = $this->platform;
 
-            public function __construct(Store $store, LogDocumentPlatform $platform)
+        return new #[AsTool(name: 'log_search', description: 'Search logs for simple testing')] class($store, $platform) {
+            private Store $store;
+            private LogDocumentPlatformInterface $platform;
+
+            public function __construct(Store $store, LogDocumentPlatformInterface $platform)
             {
                 $this->store = $store;
                 $this->platform = $platform;
@@ -249,7 +269,7 @@ class SimpleIntegrationTest extends TestCase
 
                     // Simple analysis
                     $combinedContent = implode("\n", array_column($allDocs, 'content'));
-                    $analysisResult = $this->platform->__invoke(
+                    $analysisResult = ($this->platform)(
                         "Analyze these log entries: \n\n".$combinedContent
                     );
 
@@ -271,12 +291,15 @@ class SimpleIntegrationTest extends TestCase
 
     private function createDirectLogSearchTool(): object
     {
-        // Create a simplified tool that directly uses the store and platform for testing
-        return new class($this->store, $this->platform) {
-            private Store $store;
-            private LogDocumentPlatform $platform;
+        $store = $this->store;
+        $platform = $this->platform;
 
-            public function __construct(Store $store, LogDocumentPlatform $platform)
+        // Create a simplified tool that directly uses the store and platform for testing
+        return new class($store, $platform) {
+            private Store $store;
+            private LogDocumentPlatformInterface $platform;
+
+            public function __construct(Store $store, LogDocumentPlatformInterface $platform)
             {
                 $this->store = $store;
                 $this->platform = $platform;
@@ -327,7 +350,7 @@ class SimpleIntegrationTest extends TestCase
 
                     // AI analysis
                     $combinedContent = implode("\n", array_column($relevantLogs, 'content'));
-                    $analysisResult = $this->platform->__invoke(
+                    $analysisResult = ($this->platform)(
                         "Analyze these log entries and provide a concise explanation: \n\n".$combinedContent
                     );
 
@@ -489,8 +512,6 @@ class SimpleIntegrationTest extends TestCase
         $this->assertArrayHasKey('reason', $result);
     }
 
-    // Agent tests disabled - see testAgentIntegrationNote() for explanation
-
     public function testLogMetadataIntegrity(): void
     {
         $result = $this->tool->__invoke('payment timeout');
@@ -521,7 +542,7 @@ class SimpleIntegrationTest extends TestCase
         $results = iterator_to_array($this->store->query(new Vector([0.5, 0.5, 0.5, 0.5, 0.5])));
         $this->assertGreaterThan(0, count($results));
 
-        $platformResult = $this->platform->__invoke('test query');
-        $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $platformResult);
+        $platformResult = ($this->platform)('test query');
+        $this->assertInstanceOf(ResultInterface::class, $platformResult);
     }
 }
