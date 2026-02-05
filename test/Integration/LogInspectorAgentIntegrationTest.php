@@ -3,12 +3,12 @@
 namespace Hakam\AiLogInspector\Test\Integration;
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
-use Hakam\AiLogInspector\Model\LogDocumentModel;
-use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
-use Symfony\AI\Platform\Capability;
 use Symfony\AI\Platform\Model;
+use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
+use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
 use Symfony\AI\Platform\Test\InMemoryPlatform;
@@ -21,19 +21,14 @@ use Symfony\Component\Uid\Uuid;
 class LogInspectorAgentIntegrationTest extends TestCase
 {
     private InMemoryPlatform $symfonyPlatform;
-    private LogDocumentPlatform $platform;
+    private LogDocumentPlatformInterface $platform;
     private Store $store;
-    private LogDocumentModel $model;
     private LogInspectorAgent $agent;
 
     protected function setUp(): void
     {
         // Create real Symfony AI store
         $this->store = new Store();
-        $this->model = new LogDocumentModel(
-            'test-model',
-            [Capability::TOOL_CALLING, Capability::INPUT_TEXT, Capability::OUTPUT_TEXT]
-        );
 
         // Create sample log data in the store
         $this->setupSampleLogData();
@@ -45,7 +40,7 @@ class LogInspectorAgentIntegrationTest extends TestCase
             }
         );
 
-        $this->platform = new LogDocumentPlatform($this->symfonyPlatform, $this->model);
+        $this->platform = $this->createMockLogDocumentPlatform();
 
         // Create mock tool for agent
         $tools = [$this->createMockLogSearchTool()];
@@ -58,7 +53,39 @@ class LogInspectorAgentIntegrationTest extends TestCase
         );
     }
 
-    private function handlePlatformRequest(Model $model, array|string|object $input, array $options = []): \Symfony\AI\Platform\Result\ResultInterface
+    private function createMockLogDocumentPlatform(): LogDocumentPlatformInterface
+    {
+        $mockModel = $this->createMock(Model::class);
+        $mockModel->method('getName')->willReturn('test-model');
+
+        $mockCatalog = $this->createMock(ModelCatalogInterface::class);
+        $mockCatalog->method('getModel')->willReturn($mockModel);
+
+        $platform = $this->createMock(LogDocumentPlatformInterface::class);
+        $platform->method('getPlatform')->willReturn($this->symfonyPlatform);
+        $platform->method('getModel')->willReturn($mockModel);
+        $platform->method('getModelCatalog')->willReturn($mockCatalog);
+
+        // Mock invoke to delegate to InMemoryPlatform
+        $platform->method('invoke')->willReturnCallback(
+            fn (string $model, object|array|string $input, array $options = []) => $this->symfonyPlatform->invoke($model, $input, $options)
+        );
+
+        // Mock __invoke for direct platform calls
+        $platform->method('__invoke')->willReturnCallback(
+            function (string|array $input): ResultInterface {
+                return $this->handlePlatformRequest(
+                    $this->createMock(Model::class),
+                    $input,
+                    []
+                );
+            }
+        );
+
+        return $platform;
+    }
+
+    private function handlePlatformRequest(Model $model, array|string|object $input, array $options = []): ResultInterface
     {
         // Handle different input types from the agent
         if (is_string($input)) {
@@ -258,11 +285,14 @@ class LogInspectorAgentIntegrationTest extends TestCase
 
     private function createMockLogSearchTool(): object
     {
-        return new #[AsTool(name: 'log_search', description: 'Search logs for analysis')] class($this->store, $this->platform) {
-            private Store $store;
-            private LogDocumentPlatform $platform;
+        $store = $this->store;
+        $platform = $this->platform;
 
-            public function __construct(Store $store, LogDocumentPlatform $platform)
+        return new #[AsTool(name: 'log_search', description: 'Search logs for analysis')] class($store, $platform) {
+            private Store $store;
+            private LogDocumentPlatformInterface $platform;
+
+            public function __construct(Store $store, LogDocumentPlatformInterface $platform)
             {
                 $this->store = $store;
                 $this->platform = $platform;
@@ -312,7 +342,7 @@ class LogInspectorAgentIntegrationTest extends TestCase
 
                     // Analyze the found logs
                     $combinedContent = implode("\n", array_column($allDocs, 'content'));
-                    $analysisResult = $this->platform->__invoke(
+                    $analysisResult = ($this->platform)(
                         "Analyze these log entries and provide a concise explanation of what caused the error or issue. Focus on the root cause, not just listing what happened:\n\n".$combinedContent
                     );
 
@@ -347,104 +377,6 @@ class LogInspectorAgentIntegrationTest extends TestCase
         $this->assertNotNull($this->agent);
     }
 
-    /*
-    public function testAgentCanAnalyzeCheckoutFailures(): void
-    {
-        $result = $this->agent->ask('Why did the last checkout request fail and return 500?');
-
-        $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $result);
-
-        // The result should contain analysis from the LogSearchTool
-        $content = $result->getContent();
-        $this->assertIsString($content);
-
-        // Should mention the key elements from our mock analysis
-        $this->assertStringContainsString('Payment gateway timeout', $content);
-        $this->assertStringContainsString('cascade failure', $content);
-        $this->assertStringContainsString('database connection', $content);
-    }
-    */
-
-    /*
-    // These tests are disabled due to MessageBag handling complexity
-    public function testAgentCanAnalyzeAuthenticationIssues(): void
-    {
-        $result = $this->agent->ask('What happened with the admin login failures?');
-
-        $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $result);
-
-        $content = $result->getContent();
-        $this->assertIsString($content);
-
-        // Should mention authentication-related analysis
-        $this->assertStringContainsString('failed login', $content);
-        $this->assertStringContainsString('admin', $content);
-    }
-
-    public function testAgentCanAnalyzeDatabaseProblems(): void
-    {
-        $result = $this->agent->ask('Why are we seeing database connection errors?');
-
-        $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $result);
-
-        $content = $result->getContent();
-        $this->assertIsString($content);
-
-        // Should mention database-related analysis
-        $this->assertStringContainsString('database', $content);
-        $this->assertStringContainsString('connection', $content);
-    }
-    */
-
-    /*
-    // Disabled due to MessageBag handling complexity
-    public function testAgentHandlesEmptyQueries(): void
-    {
-        $result = $this->agent->ask('');
-
-        $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $result);
-
-        $content = $result->getContent();
-        $this->assertIsString($content);
-
-        // Should handle empty queries gracefully
-        $this->assertStringContainsString('Query cannot be empty', $content);
-    }
-
-    public function testAgentHandlesUnknownIssues(): void
-    {
-        $result = $this->agent->ask('What happened with the quantum flux capacitor malfunction?');
-
-        $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $result);
-
-        $content = $result->getContent();
-        $this->assertIsString($content);
-
-        // Should indicate no relevant logs found or provide a generic response
-        $this->assertNotEmpty($content);
-    }
-
-    public function testAgentWithCustomSystemPrompt(): void
-    {
-        $customPrompt = 'You are a specialized database log analyzer. Focus only on database-related issues.';
-
-        $customAgent = new LogInspectorAgent(
-            $this->platform,
-            $this->model,
-            $this->store,
-            $customPrompt
-        );
-
-        $result = $customAgent->ask('What database issues occurred?');
-
-        $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $result);
-
-        $content = $result->getContent();
-        $this->assertIsString($content);
-        $this->assertNotEmpty($content);
-    }
-    */
-
     public function testLogSearchToolDirectAccess(): void
     {
         $tool = $this->createMockLogSearchTool();
@@ -464,29 +396,6 @@ class LogInspectorAgentIntegrationTest extends TestCase
         $this->assertArrayHasKey('source', $firstLog);
         $this->assertArrayHasKey('tags', $firstLog);
     }
-
-    /*
-    // Disabled due to MessageBag handling complexity
-    public function testMultipleQuestionsInSequence(): void
-    {
-        // Test multiple questions to ensure agent state is maintained properly
-        $questions = [
-            'Why did checkout fail?',
-            'What authentication problems occurred?',
-            'Are there any database issues?'
-        ];
-
-        foreach ($questions as $question) {
-            $result = $this->agent->ask($question);
-
-            $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $result);
-
-            $content = $result->getContent();
-            $this->assertIsString($content);
-            $this->assertNotEmpty($content);
-        }
-    }
-    */
 
     public function testLogSearchWithNoMatchingLogs(): void
     {

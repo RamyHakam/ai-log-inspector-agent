@@ -3,12 +3,12 @@
 namespace Hakam\AiLogInspector\Test\Integration;
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
-use Hakam\AiLogInspector\Model\LogDocumentModel;
-use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
-use Symfony\AI\Platform\Capability;
 use Symfony\AI\Platform\Model;
+use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
+use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Test\InMemoryPlatform;
 use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\Metadata;
@@ -21,20 +21,18 @@ use Symfony\Component\Uid\Uuid;
  */
 class EndToEndWorkflowTest extends TestCase
 {
-    private InMemoryPlatform $symnfonyPlatform;
-    private LogDocumentPlatform $platform;
+    private LogDocumentPlatformInterface $platform;
     private Store $store;
-    private LogDocumentModel $model;
     private LogInspectorAgent $agent;
 
     protected function setUp(): void
     {
         $this->store = new Store();
-        $this->model = new LogDocumentModel('production-log-analyzer', [Capability::TOOL_CALLING]);
 
         $this->setupProductionLikeLogData();
-        $this->symnfonyPlatform = $this->createMockSymfonyPlatform();
-        $this->platform = new LogDocumentPlatform($this->symnfonyPlatform, $this->model);
+
+        // Create mock platform that wraps InMemoryPlatform
+        $this->platform = $this->createMockLogDocumentPlatform();
 
         // Create a simple mock tool for the agent
         $tools = [$this->createMockLogSearchTool()];
@@ -183,9 +181,9 @@ class EndToEndWorkflowTest extends TestCase
         }
     }
 
-    private function createMockSymfonyPlatform(): InMemoryPlatform
+    private function createMockLogDocumentPlatform(): LogDocumentPlatformInterface
     {
-        return new InMemoryPlatform(function (Model $model, array|string|object $input, array $options = []): string {
+        $inMemoryPlatform = new InMemoryPlatform(function (Model $model, array|string|object $input, array $options = []): string {
             $query = is_string($input) ? $input : serialize($input);
 
             // Map different queries to appropriate responses
@@ -229,6 +227,25 @@ class EndToEndWorkflowTest extends TestCase
                 default => 'Based on the log analysis, I can see various incidents including traffic spikes (traffic_spike_001), database issues (db_error_001, circuit_breaker_001), payment failures (payment_error_001), service outages (service_unavailable_001), and security events (security_threat_001, security_block_001). The system showed good resilience with autoscaling (autoscaling_001) and recovery (circuit_breaker_restored_001).'
             };
         });
+
+        // Create a mock LogDocumentPlatformInterface that wraps InMemoryPlatform
+        $mockModel = $this->createMock(Model::class);
+        $mockModel->method('getName')->willReturn('test-model');
+
+        $mockCatalog = $this->createMock(ModelCatalogInterface::class);
+        $mockCatalog->method('getModel')->willReturn($mockModel);
+
+        $platform = $this->createMock(LogDocumentPlatformInterface::class);
+        $platform->method('getPlatform')->willReturn($inMemoryPlatform);
+        $platform->method('getModel')->willReturn($mockModel);
+        $platform->method('getModelCatalog')->willReturn($mockCatalog);
+
+        // Mock invoke to delegate to InMemoryPlatform
+        $platform->method('invoke')->willReturnCallback(
+            fn (string $model, object|array|string $input, array $options = []) => $inMemoryPlatform->invoke($model, $input, $options)
+        );
+
+        return $platform;
     }
 
     private function createMockLogSearchTool(): object
@@ -466,7 +483,7 @@ class EndToEndWorkflowTest extends TestCase
         foreach ($complexQueries as $query) {
             $result = $this->agent->ask($query);
 
-            $this->assertInstanceOf(\Symfony\AI\Platform\Result\ResultInterface::class, $result);
+            $this->assertInstanceOf(ResultInterface::class, $result);
 
             $content = $result->getContent();
             $this->assertIsString($content);

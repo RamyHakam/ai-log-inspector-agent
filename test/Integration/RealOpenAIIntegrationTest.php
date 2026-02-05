@@ -3,15 +3,15 @@
 namespace Hakam\AiLogInspector\Test\Integration;
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
-use Hakam\AiLogInspector\Model\LogDocumentModel;
-use Hakam\AiLogInspector\Platform\LogDocumentPlatform;
+use Hakam\AiLogInspector\Enum\PlatformEnum;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformFactory;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Hakam\AiLogInspector\Retriever\LogRetriever;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory;
-use Symfony\AI\Platform\Capability;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\TextDocument;
 use Symfony\AI\Store\Document\Vectorizer;
@@ -31,8 +31,7 @@ class RealOpenAIIntegrationTest extends TestCase
     private $platform;
     private Store $store;
     private VectorLogDocumentStore $vectorStore;
-    private LogDocumentPlatform $logPlatform;
-    private LogDocumentModel $model;
+    private LogDocumentPlatformInterface $logPlatform;
     private LogRetriever $retriever;
     private LogInspectorAgent $agent;
     private LogSearchTool $tool;
@@ -60,14 +59,14 @@ class RealOpenAIIntegrationTest extends TestCase
         $this->store = new Store();
         $this->vectorStore = new VectorLogDocumentStore($this->store);
 
-        // Create model with capabilities
-        $this->model = new LogDocumentModel(
-            self::CHAT_MODEL,
-            [Capability::TOOL_CALLING, Capability::INPUT_TEXT, Capability::OUTPUT_TEXT]
+        // Create LogDocumentPlatform using factory
+        $this->logPlatform = LogDocumentPlatformFactory::createBrainPlatform(
+            PlatformEnum::OPENAI,
+            [
+                'api_key' => $apiKey,
+                'model' => self::CHAT_MODEL,
+            ]
         );
-
-        // Create LogDocumentPlatform wrapper
-        $this->logPlatform = new LogDocumentPlatform($this->platform, $this->model);
 
         // Setup test data
         $this->setupRealWorldLogData();
