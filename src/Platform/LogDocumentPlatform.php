@@ -73,7 +73,7 @@ readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
     {
         return $this->config['model'] ?? match ($this->platformType) {
             PlatformEnum::OPENAI => 'gpt-4o-mini',
-            PlatformEnum::ANTHROPIC => 'claude-3-5-sonnet-20241022',
+            PlatformEnum::ANTHROPIC => 'claude-sonnet-4-20250514',
             PlatformEnum::OLLAMA => 'llama3.1',
         };
     }

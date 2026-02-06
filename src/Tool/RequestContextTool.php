@@ -134,7 +134,8 @@ class RequestContextTool implements LogInspectorToolInterface
 
     private function performKeywordBasedSearch(string $identifier): array
     {
-        $neutralVector = new Vector(array_fill(0, 5, 0.5));
+        $dim = $this->detectVectorDimension();
+        $neutralVector = new Vector(array_fill(0, $dim, 0.5));
         $allResults = $this->store->queryForVector($neutralVector, ['maxItems' => 2000]);
 
         $matchingResults = [];
@@ -280,6 +281,36 @@ class RequestContextTool implements LogInspectorToolInterface
                 'Check if the request occurred within the indexed time range',
             ],
         ];
+    }
+
+    /**
+     * Detect the vector dimension used in the store.
+     */
+    private function detectVectorDimension(): int
+    {
+        try {
+            $probe = new Vector(array_fill(0, 5, 0.5));
+            foreach ($this->store->queryForVector($probe, ['maxItems' => 1]) as $doc) {
+                if ($doc instanceof VectorDocument && null !== $doc->vector) {
+                    return count($doc->vector->getData());
+                }
+            }
+        } catch (\Throwable) {
+            foreach ([1536, 768, 384] as $dim) {
+                try {
+                    $probe = new Vector(array_fill(0, $dim, 0.5));
+                    foreach ($this->store->queryForVector($probe, ['maxItems' => 1]) as $doc) {
+                        if ($doc instanceof VectorDocument) {
+                            return $dim;
+                        }
+                    }
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+        }
+
+        return 5;
     }
 
     private function formatRequestContext(array $results, string $identifier): array

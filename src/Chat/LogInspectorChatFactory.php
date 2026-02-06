@@ -6,6 +6,7 @@ use Hakam\AiLogInspector\Agent\LogInspectorAgent;
 use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Tool\RequestContextTool;
+use Symfony\Component\Uid\Uuid;
 
 class LogInspectorChatFactory
 {
@@ -21,7 +22,8 @@ class LogInspectorChatFactory
 
         $agent = new LogInspectorAgent($platform, $tools);
 
-        return new LogInspectorChat($agent, new SessionMessageStore());
+        // Use a unique session ID for non-persistent chats to avoid conflicts
+        return new LogInspectorChat($agent, new SessionMessageStore(Uuid::v4()->toRfc4122()));
     }
 
     public static function createSession(

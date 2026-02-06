@@ -131,7 +131,7 @@ class RequestContextToolTest extends TestCase
         ];
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn($mockResults);
 
@@ -148,7 +148,7 @@ class RequestContextToolTest extends TestCase
 
         // Mock empty search results
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn([]);
 
@@ -182,7 +182,7 @@ class RequestContextToolTest extends TestCase
         ];
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn($mockResults);
 
@@ -216,7 +216,7 @@ class RequestContextToolTest extends TestCase
         ];
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn($mockResults);
 
@@ -256,7 +256,7 @@ class RequestContextToolTest extends TestCase
         ];
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn($mockResults);
 
@@ -282,7 +282,7 @@ class RequestContextToolTest extends TestCase
         ];
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn($mockResults);
 
