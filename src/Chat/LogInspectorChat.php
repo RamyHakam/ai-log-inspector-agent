@@ -51,7 +51,7 @@ class LogInspectorChat implements ChatInterface
             $this->initialized = true;
             foreach ($existingMessages as $message) {
                 if ($message instanceof UserMessage) {
-                    $this->turnCount++;
+                    ++$this->turnCount;
                 }
             }
         }
@@ -91,7 +91,7 @@ class LogInspectorChat implements ChatInterface
             $this->startInvestigation();
         }
 
-        $this->turnCount++;
+        ++$this->turnCount;
 
         // After the first turn, add a tool-calling reminder to help models
         // like llama3.1 that lose the tool-calling format in longer conversations

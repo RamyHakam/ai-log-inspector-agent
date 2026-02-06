@@ -92,6 +92,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
                 $this->sessionId,
                 $filePath
             ));
+
             return new MessageBag();
         }
 
@@ -103,6 +104,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
                 $this->sessionId,
                 $filePath
             ));
+
             return new MessageBag();
         }
 
@@ -114,6 +116,7 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
             count($messages),
             $data['updated_at'] ?? 'unknown'
         ));
+
         return $messages;
     }
 

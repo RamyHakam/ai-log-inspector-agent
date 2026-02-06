@@ -1,0 +1,43 @@
+[2026-02-06 10:02:11] request.INFO: Incoming HTTP request {"method":"POST","uri":"/api/orders","request_id":"req_aa001","session_id":"sess_901","ip":"192.168.1.10"} []
+
+[2026-02-06 10:02:11] security.DEBUG: Token authenticated {"user_id":12,"email":"alice@shop.com","roles":["ROLE_USER"],"request_id":"req_aa001"} []
+
+[2026-02-06 10:02:11] app.INFO: Order creation started {"order_id":"ord_9001","user_id":12,"cart_total":79.90,"currency":"EUR","request_id":"req_aa001"} []
+
+[2026-02-06 10:02:12] doctrine.DEBUG: Executing query {"sql":"INSERT INTO orders (...)","order_id":"ord_9001","request_id":"req_aa001"} []
+
+[2026-02-06 10:02:12] payment.DEBUG: Preparing payment intent {"provider":"Stripe","order_id":"ord_9001","request_id":"req_aa001"} []
+
+[2026-02-06 10:02:13] payment.INFO: Payment successful {"provider":"Stripe","payment_id":"pay_5511","order_id":"ord_9001","request_id":"req_aa001"} []
+
+[2026-02-06 10:02:13] app.INFO: Order completed {"order_id":"ord_9001","user_id":12,"request_id":"req_aa001"} []
+
+[2026-02-06 10:02:13] request.INFO: HTTP response sent {"status_code":201,"duration_ms":920,"request_id":"req_aa001"} []
+
+[2026-02-06 10:07:44] request.INFO: Incoming HTTP request {"method":"POST","uri":"/api/orders","request_id":"req_bb002","session_id":"sess_118","ip":"192.168.1.21"} []
+
+[2026-02-06 10:07:44] security.DEBUG: Token authenticated {"user_id":77,"email":"bob@shop.com","roles":["ROLE_USER"],"request_id":"req_bb002"} []
+
+[2026-02-06 10:07:44] app.INFO: Order creation started {"order_id":"ord_9002","user_id":77,"cart_total":249.00,"currency":"EUR","request_id":"req_bb002"} []
+
+[2026-02-06 10:07:45] payment.DEBUG: Calling payment provider {"provider":"Stripe","order_id":"ord_9002","attempt":1,"request_id":"req_bb002"} []
+
+[2026-02-06 10:07:48] payment.ERROR: Payment gateway timeout {"provider":"Stripe","attempt":1,"timeout_sec":3,"request_id":"req_bb002"} []
+
+[2026-02-06 10:07:48] payment.WARNING: Retrying payment {"order_id":"ord_9002","attempt":2,"request_id":"req_bb002"} []
+
+[2026-02-06 10:07:49] payment.INFO: Payment successful after retry {"payment_id":"pay_5512","order_id":"ord_9002","request_id":"req_bb002"} []
+
+[2026-02-06 10:07:49] app.INFO: Order completed {"order_id":"ord_9002","user_id":77,"request_id":"req_bb002"} []
+
+[2026-02-06 10:07:49] request.INFO: HTTP response sent {"status_code":201,"duration_ms":5120,"request_id":"req_bb002"} []
+
+[2026-02-06 10:09:01] messenger.INFO: Message received {"message":"SendOrderConfirmation","order_id":"ord_9002","request_id":"req_bb002"} []
+
+[2026-02-06 10:09:01] mailer.DEBUG: Preparing order confirmation email {"order_id":"ord_9002","user_id":77} []
+
+[2026-02-06 10:09:03] mailer.ERROR: SMTP connection failed {"host":"smtp.mailgun.org","error":"Connection refused","order_id":"ord_9002"} []
+
+[2026-02-06 10:09:03] messenger.WARNING: Retrying message {"message":"SendOrderConfirmation","retry":1,"order_id":"ord_9002"} []
+
+[2026-02-06 10:09:08] mailer.INFO: Email sent successfully {"order_id":"ord_9002","user_id":77} []

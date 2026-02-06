@@ -111,11 +111,16 @@ const PLATFORMS: PlatformConfig[] = [
 ];
 
 const QUICK_QUESTIONS = [
+  { label: ' order number req_bb002  issue why', icon: '📦' },
+  { label: 'what is the email  status of this order ord_9002', icon: '📧' },
+  { label: 'the user with name  "dave"  reset password failed', icon: '👤' },
+  { label: 'whey user with request id = req_lg101 login failed', icon: '🔐' },
+  { label: 'whey this request req_fp201  blocked', icon: '🚫' },
   { label: 'Why did payments fail?', icon: '💳' },
-  { label: 'Database issues?', icon: '🗄️' },
-  { label: 'Security threats?', icon: '🛡️' },
-  { label: 'Application errors?', icon: '🐛' },
-  { label: 'Performance problems?', icon: '⚡' },
+  { label: 'give me any Database issues?', icon: '🗄️' },
+  { label: 'Is there any Security threats?', icon: '🛡️' },
+  { label: 'list all the  Application errors?', icon: '🐛' },
+  { label: 'give me any Performance problems?', icon: '⚡' },
 ];
 
 function formatTimestamp(date: Date): string {

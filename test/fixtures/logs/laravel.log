@@ -1,0 +1,39 @@
+[2026-02-06 11:01:12] production.INFO: Request received {"request_id":"req_lg101","method":"POST","uri":"/login","ip":"10.0.0.9"}
+
+[2026-02-06 11:01:12] production.DEBUG: Validating credentials {"email":"carol@site.com","request_id":"req_lg101"}
+
+[2026-02-06 11:01:12] production.WARNING: Invalid password {"email":"carol@site.com","request_id":"req_lg101"}
+
+[2026-02-06 11:01:12] production.INFO: Authentication failed {"email":"carol@site.com","request_id":"req_lg101"}
+
+[2026-02-06 11:01:12] production.INFO: Response sent {"status":401,"duration_ms":84,"request_id":"req_lg101"}
+
+[2026-02-06 11:03:55] production.INFO: Request received {"request_id":"req_lg102","method":"POST","uri":"/login","ip":"10.0.0.11"}
+
+[2026-02-06 11:03:55] production.DEBUG: Validating credentials {"email":"admin@site.com","request_id":"req_lg102"}
+
+[2026-02-06 11:03:55] production.INFO: User authenticated {"user_id":1,"roles":["admin"],"request_id":"req_lg102"}
+
+[2026-02-06 11:03:55] production.DEBUG: Regenerating session {"session_id":"sess_adm01","request_id":"req_lg102"}
+
+[2026-02-06 11:03:55] production.INFO: Login successful {"user_id":1,"session_id":"sess_adm01","request_id":"req_lg102"}
+
+[2026-02-06 11:03:55] production.INFO: Response sent {"status":200,"duration_ms":126,"request_id":"req_lg102"}
+
+[2026-02-06 11:15:22] production.INFO: Request received {"request_id":"req_fp201","method":"POST","uri":"/forgot-password","ip":"10.0.0.15"}
+
+[2026-02-06 11:15:22] production.DEBUG: Password reset requested {"email":"dave@site.com","request_id":"req_fp201"}
+
+[2026-02-06 11:15:22] production.WARNING: Too many reset attempts {"email":"dave@site.com","attempts":5,"request_id":"req_fp201"}
+
+[2026-02-06 11:15:22] production.INFO: Response sent {"status":429,"duration_ms":51,"request_id":"req_fp201"}
+
+[2026-02-06 11:22:10] production.INFO: Request received {"request_id":"req_fp202","method":"POST","uri":"/forgot-password","ip":"10.0.0.15"}
+
+[2026-02-06 11:22:10] production.INFO: Password reset token created {"user_id":93,"token_id":"prt_99112","request_id":"req_fp202"}
+
+[2026-02-06 11:22:11] production.DEBUG: Sending password reset email {"mailer":"ses","request_id":"req_fp202"}
+
+[2026-02-06 11:22:11] production.INFO: Password reset email sent {"user_id":93,"request_id":"req_fp202"}
+
+[2026-02-06 11:22:11] production.INFO: Response sent {"status":200,"duration_ms":312,"request_id":"req_fp202"}

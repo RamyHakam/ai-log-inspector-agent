@@ -555,10 +555,10 @@ function loadSampleLogs(): array
         'database' => 'database-errors.log',
         'security' => 'security-errors.log',
         'application' => 'application-errors.log',
-        'performance' => 'performance-errors.log',
-        'laravel' => 'laravel-errors.log',
         'kubernetes' => 'kubernetes-errors.log',
         'microservices' => 'microservices-errors.log',
+        'symfony' => 'symfony.log',
+        'laravel-info' => 'laravel.log',
     ];
 
     $logs = [];
