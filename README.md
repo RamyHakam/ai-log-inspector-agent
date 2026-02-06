@@ -97,7 +97,7 @@ $result = $agent->ask('How many users were affected by the outage?');
 //    service disruption between 14:15-14:32 during the database incident."
 ```
 
-> ⚠️ **Note** - Built on Symfony AI (experimental). The package itself is production-ready, but platform maturity depends on your provider and deployment setup.
+> ⚠️ **Note** - Built on Symfony AI (experimental). The package itself is NOT production-ready; platform maturity depends on your provider and deployment setup.
 
 ---
 
@@ -113,7 +113,7 @@ $result = $agent->ask('How many users were affected by the outage?');
 🧩 **Multi-Tool** - `log_search` + `request_context` for request tracing  
 📂 **File Upload Indexing** - Upload logs and index via `LogFileIndexer`  
 💬 **Session Chat** - Persisted chat history for multi-turn investigations  
-🧪 **Production Demo** - Ollama + Chroma + Redis playground API
+🧪 **Production Demo** - Check Playground Demo
 
 ---
 
