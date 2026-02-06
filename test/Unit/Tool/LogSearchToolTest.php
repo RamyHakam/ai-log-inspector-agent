@@ -108,9 +108,9 @@ class LogSearchToolTest extends TestCase
             null
         );
 
-        // Store is queried once for keyword search
+        // Store is queried for dimension detection probe + keyword search
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn([$resultDocument]);
 
@@ -208,7 +208,7 @@ class LogSearchToolTest extends TestCase
         );
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn([$resultDocument]);
 
@@ -230,7 +230,7 @@ class LogSearchToolTest extends TestCase
 
         // Return empty results from store
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn([]);
 
@@ -283,7 +283,7 @@ class LogSearchToolTest extends TestCase
         }
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn($documents);
 
@@ -325,7 +325,7 @@ class LogSearchToolTest extends TestCase
         );
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn([$resultDocument]);
 
@@ -376,7 +376,7 @@ class LogSearchToolTest extends TestCase
         );
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn([$resultDocument]);
 
@@ -446,7 +446,7 @@ class LogSearchToolTest extends TestCase
             ->willReturn($platformResult);
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn([$resultDocument]);
 
@@ -502,7 +502,7 @@ class LogSearchToolTest extends TestCase
             );
 
             $this->store
-                ->expects($this->once())
+                ->expects($this->atLeast(1))
                 ->method('queryForVector')
                 ->willReturn([$resultDocument]);
 
@@ -545,7 +545,7 @@ class LogSearchToolTest extends TestCase
         );
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn([$resultDocument]);
 
@@ -588,7 +588,7 @@ class LogSearchToolTest extends TestCase
         );
 
         $this->store
-            ->expects($this->once())
+            ->expects($this->atLeast(1))
             ->method('queryForVector')
             ->willReturn([$resultDocument]);
 

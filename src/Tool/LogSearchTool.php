@@ -15,7 +15,7 @@ use Symfony\AI\Store\Document\VectorDocument;
 )]
 class LogSearchTool implements LogInspectorToolInterface
 {
-    private const RELEVANCE_THRESHOLD = 0.7;
+    private const RELEVANCE_THRESHOLD = 0.3;
     private const MAX_RESULTS = 15;
     private bool $supportsVectorization = true;
 
@@ -71,12 +71,18 @@ class LogSearchTool implements LogInspectorToolInterface
     {
         $searchResults = $this->retriever->retrieve($query, ['maxItems' => self::MAX_RESULTS]);
 
+        // The DistanceCalculator returns results sorted by distance (ascending).
+        // Lower distance = more similar. For cosine distance, values range 0.0-2.0.
+        // We accept results up to maxDistance (1 - threshold).
         $maxDistance = 1.0 - self::RELEVANCE_THRESHOLD;
 
         $filteredResults = [];
         foreach ($searchResults as $result) {
-            if ($result instanceof VectorDocument && (null === $result->score || $result->score <= $maxDistance)) {
-                $filteredResults[] = $result;
+            if ($result instanceof VectorDocument) {
+                // Accept results with no score (distance not computed) or within threshold
+                if (null === $result->score || $result->score <= $maxDistance) {
+                    $filteredResults[] = $result;
+                }
             }
         }
 
@@ -191,9 +197,11 @@ class LogSearchTool implements LogInspectorToolInterface
      */
     private function performKeywordSearch(string $query): array
     {
-        // Get all documents from the store using a neutral vector query
-        // This is a workaround to get all stored documents
-        $neutralVector = new Vector([0.5, 0.5, 0.5, 0.5, 0.5]); // Neutral vector
+        // Get all documents from the store using a neutral vector query.
+        // The vector dimension must match the stored documents.
+        // Try to detect the dimension from the first stored vector, default to 5 (category fallback).
+        $dim = $this->detectVectorDimension();
+        $neutralVector = new Vector(array_fill(0, $dim, 0.5));
         $allResults = $this->store->queryForVector($neutralVector, ['maxItems' => 1000]);
 
         $matchingResults = [];
@@ -268,6 +276,39 @@ class LogSearchTool implements LogInspectorToolInterface
         );
 
         return $filteredResults;
+    }
+
+    /**
+     * Detect the vector dimension used in the store by probing with a small vector.
+     * Falls back to 5 (category vectors) if detection fails.
+     */
+    private function detectVectorDimension(): int
+    {
+        try {
+            // Probe with a small vector to get any document back
+            $probe = new Vector(array_fill(0, 5, 0.5));
+            foreach ($this->store->queryForVector($probe, ['maxItems' => 1]) as $doc) {
+                if ($doc instanceof VectorDocument && null !== $doc->vector) {
+                    return count($doc->vector->getData());
+                }
+            }
+        } catch (\Throwable) {
+            // Probe failed (likely dimension mismatch), try common dimensions
+            foreach ([1536, 768, 384] as $dim) {
+                try {
+                    $probe = new Vector(array_fill(0, $dim, 0.5));
+                    foreach ($this->store->queryForVector($probe, ['maxItems' => 1]) as $doc) {
+                        if ($doc instanceof VectorDocument) {
+                            return $dim;
+                        }
+                    }
+                } catch (\Throwable) {
+                    continue;
+                }
+            }
+        }
+
+        return 5;
     }
 
     /**

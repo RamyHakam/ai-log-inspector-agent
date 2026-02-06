@@ -33,15 +33,28 @@ class LogInspectorChat implements ChatInterface
 {
     private Chat $chat;
     private bool $initialized = false;
+    private int $turnCount = 0;
+    private MessageStoreInterface&ManagedStoreInterface $store;
 
     public function __construct(
         private readonly LogInspectorAgent $agent,
         MessageStoreInterface&ManagedStoreInterface $store,
     ) {
-        $store = $store ?? new InMemoryStore();
-        $store->setup();
+        $this->store = $store ?? new InMemoryStore();
+        $this->store->setup();
 
-        $this->chat = new Chat($agent, $store);
+        $this->chat = new Chat($agent, $this->store);
+
+        $existingMessages = $this->store->load();
+        if (count($existingMessages) > 0) {
+            $this->chat->initiate($existingMessages);
+            $this->initialized = true;
+            foreach ($existingMessages as $message) {
+                if ($message instanceof UserMessage) {
+                    $this->turnCount++;
+                }
+            }
+        }
     }
 
     /**
@@ -76,6 +89,14 @@ class LogInspectorChat implements ChatInterface
     {
         if (!$this->initialized) {
             $this->startInvestigation();
+        }
+
+        $this->turnCount++;
+
+        // After the first turn, add a tool-calling reminder to help models
+        // like llama3.1 that lose the tool-calling format in longer conversations
+        if ($this->turnCount > 1) {
+            $question .= "\n\n(Remember: use the log_search or request_context tool to find log data. Do not output JSON manually.)";
         }
 
         return $this->chat->submit(Message::ofUser($question));
@@ -194,8 +215,27 @@ class LogInspectorChat implements ChatInterface
     private function buildInvestigationPrompt(string $context): string
     {
         $basePrompt = <<<PROMPT
-You are an expert log analysis assistant conducting an investigation. You have access to tools
-for searching logs and tracing requests across services.
+You are an expert log analysis assistant conducting an investigation.
+
+TOOL CALLING - MANDATORY:
+You have function-calling tools available. You MUST use the tool-calling mechanism provided by the system to invoke tools. Never write JSON tool calls as text in your response.
+
+Available tools:
+1. `log_search` - Search logs by query keywords (e.g. "payment errors", "database timeouts")
+2. `request_context` - Trace a specific request by request_id, trace_id, or session_id
+
+When to use tools:
+- ANY question about logs, errors, issues, or events: call log_search
+- Questions about specific requests or traces: call request_context
+- Follow-up questions asking for more details or related logs: call log_search again with a refined query
+- Questions like "show me the logs", "list related errors", "what other logs": call log_search
+
+Rules:
+- ALWAYS invoke the tool through the function-calling mechanism, never as text
+- If you already have results from a previous search, you may answer from context without calling tools again
+- But if the user asks for NEW or DIFFERENT logs, you MUST call the tool again
+- Base analysis ONLY on actual tool results, not assumptions
+- Cite specific log IDs from tool results as evidence
 
 INVESTIGATION GUIDELINES:
 1. Maintain context across all questions in this conversation

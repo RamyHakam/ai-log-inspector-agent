@@ -68,6 +68,13 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
         ];
 
         file_put_contents($filePath, json_encode($data, JSON_PRETTY_PRINT));
+        error_log(sprintf(
+            'SessionMessageStore.save session=%s file=%s bytes=%d messages=%d',
+            $this->sessionId,
+            $filePath,
+            @filesize($filePath) ?: 0,
+            count($messages)
+        ));
     }
 
     /**
@@ -80,16 +87,34 @@ class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterfac
         $filePath = $this->getFilePath();
 
         if (!file_exists($filePath)) {
+            error_log(sprintf(
+                'SessionMessageStore.load session=%s file=%s exists=false',
+                $this->sessionId,
+                $filePath
+            ));
             return new MessageBag();
         }
 
         $data = json_decode(file_get_contents($filePath), true);
 
         if (!isset($data['messages'])) {
+            error_log(sprintf(
+                'SessionMessageStore.load session=%s file=%s exists=true messages_present=false',
+                $this->sessionId,
+                $filePath
+            ));
             return new MessageBag();
         }
 
-        return unserialize($data['messages']);
+        $messages = unserialize($data['messages']);
+        error_log(sprintf(
+            'SessionMessageStore.load session=%s file=%s exists=true messages=%d updated_at=%s',
+            $this->sessionId,
+            $filePath,
+            count($messages),
+            $data['updated_at'] ?? 'unknown'
+        ));
+        return $messages;
     }
 
     /**
