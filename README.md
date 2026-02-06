@@ -1,7 +1,7 @@
 # 🤖 AI Log Inspector Agent
 
 [![Tests](https://github.com/RamyHakam/ai-log-inspector-agent/workflows/Tests/badge.svg)](https://github.com/RamyHakam/ai-log-inspector-agent/actions/workflows/tests.yml)
-[![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-blue.svg)](https://php.net)
+[![PHP Version](https://img.shields.io/badge/PHP-8.4%2B-blue.svg)](https://php.net)
 [![Symfony AI](https://img.shields.io/badge/Symfony%20AI-Experimental-orange.svg)](https://symfony.com/doc/current/ai.html)
 [![Status](https://img.shields.io/badge/Status-Experimental-red.svg)](#)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -54,6 +54,18 @@ $agent->ask("How many users affected?");
 
 ---
 
+## 📚 Docs & Examples
+
+Live docs: [ramyhakam.github.io/ai-log-inspector-agent](https://ramyhakam.github.io/ai-log-inspector-agent/)
+
+---
+
+## 📚 Playground  To Validate with your own logs and AI platform.
+
+Playground: [ramyhakam.github.io/ai-log-inspector-agent](https://ramyhakam.github.io/ai-log-inspector-agent/playground)
+
+---
+
 ## 💬 Real Examples - Ask Anything!
 
 ```php
@@ -85,7 +97,7 @@ $result = $agent->ask('How many users were affected by the outage?');
 //    service disruption between 14:15-14:32 during the database incident."
 ```
 
-> ⚠️ **EXPERIMENTAL** - Built on Symfony AI (experimental). Not for production use yet.
+> ⚠️ **Note** - Built on Symfony AI (experimental). The package itself is production-ready, but platform maturity depends on your provider and deployment setup.
 
 ---
 
@@ -96,11 +108,20 @@ $result = $agent->ask('How many users were affected by the outage?');
 ⚡ **Lightning Fast** - Get answers in seconds, not hours  
 🛠️ **Tool-Based** - Extensible architecture with Symfony AI  
 📊 **Vector Powered** - Smart similarity matching  
-🔄 **Fallback Ready** - Works even when AI is unavailable
+🔄 **Fallback Ready** - Works even when AI is unavailable  
+🌐 **Multi-Platform** - OpenAI, Anthropic, and Ollama support  
+🧩 **Multi-Tool** - `log_search` + `request_context` for request tracing  
+📂 **File Upload Indexing** - Upload logs and index via `LogFileIndexer`  
+💬 **Session Chat** - Persisted chat history for multi-turn investigations  
+🧪 **Production Demo** - Ollama + Chroma + Redis playground API
 
 ---
 
 ## 🚀 Quick Start
+
+### Requirements
+- PHP 8.4+
+- Composer 2+
 
 ### Install
 ```bash
@@ -111,21 +132,65 @@ composer require hakam/ai-log-inspector-agent
 
 ```php
 <?php
-use Hakam\AiLogInspector\Agent\Agent\LogInspectorAgent;use Symfony\AI\Platform\Capability;use Symfony\AI\Platform\Model;use Symfony\AI\Store\Bridge\Local\InMemoryStore;
 
-// Configure your AI platform
-$platform = new YourAIPlatform(); 
-$model = new Model('your-model', [
-    Capability::TOOL_CALLING,
-    Capability::INPUT_TEXT,
-    Capability::OUTPUT_TEXT
-]);
-$store = new InMemoryStore();
+require_once __DIR__ . '/vendor/autoload.php';
 
-// Create the agent
-$agent = new LogInspectorAgent($platform, $model, $store);
+use Hakam\AiLogInspector\Agent\LogInspectorAgent;
+use Hakam\AiLogInspector\Enum\PlatformEnum;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformFactory;
+use Hakam\AiLogInspector\Retriever\LogRetriever;
+use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
+use Hakam\AiLogInspector\Tool\LogSearchTool;
+use Hakam\AiLogInspector\Tool\RequestContextTool;
+use Symfony\AI\Store\Bridge\Local\InMemoryStore;
 
-// Start asking questions!
+// Brain platform (LLM) + Embedding platform
+$brainPlatform = LogDocumentPlatformFactory::createBrainPlatform(
+    PlatformEnum::OPENAI,
+    [
+        'api_key' => $_ENV['OPENAI_API_KEY'],
+        'model' => 'gpt-4o-mini',
+        'model_capabilities' => ['text', 'tool_calling'],
+    ]
+);
+$embeddingPlatform = LogDocumentPlatformFactory::createEmbeddingPlatform(
+    PlatformEnum::OPENAI,
+    [
+        'api_key' => $_ENV['OPENAI_API_KEY'],
+        'model' => 'text-embedding-3-small',
+    ]
+);
+
+// Vector store + retriever
+$store = new VectorLogDocumentStore(new InMemoryStore());
+$retriever = new LogRetriever(
+    embeddingPlatform: $embeddingPlatform->getPlatform(),
+    model: 'text-embedding-3-small',
+    logStore: $store
+);
+
+// Tools + agent
+$logSearchTool = new LogSearchTool($store, $retriever, $brainPlatform);
+$requestContextTool = new RequestContextTool($store, $retriever, $brainPlatform);
+$agent = new LogInspectorAgent($brainPlatform, [$logSearchTool, $requestContextTool]);
+
+// Index a few logs (in-memory)
+use Hakam\AiLogInspector\Document\LogDocumentFactory;
+use Hakam\AiLogInspector\Indexer\LogDocumentIndexer;
+
+$indexer = new LogDocumentIndexer(
+    embeddingPlatform: $embeddingPlatform->getPlatform(),
+    model: 'text-embedding-3-small',
+    logStore: $store
+);
+
+$docs = [
+    LogDocumentFactory::createFromString('[2024-01-29 14:23:45] ERROR: Payment gateway timeout'),
+    LogDocumentFactory::createFromString('[2024-01-29 14:23:46] ERROR: Stripe API returned 504'),
+];
+$indexer->indexLogDocuments($docs);
+
+// Ask questions!
 $result = $agent->ask('Why did the checkout fail?');
 echo $result->getContent();
 ```
@@ -148,6 +213,7 @@ $agent->ask('Suspicious auth patterns from IP 192.168.1.100?');
 
 ### Response Structure
 ```php
+// Tool responses are structured (LogSearchTool / RequestContextTool / Playground API)
 [
     'success' => true,                    // Found relevant logs?
     'reason' => 'Payment gateway timeout caused...',  // AI explanation
@@ -163,6 +229,7 @@ $agent->ask('Suspicious auth patterns from IP 192.168.1.100?');
     ]
 ]
 ```
+`LogInspectorAgent::ask()` returns a `ResultInterface` (use `getContent()` for the AI response). The structured array above is the tool-level output used internally and by the playground API.
 
 ---
 
@@ -170,23 +237,58 @@ $agent->ask('Suspicious auth patterns from IP 192.168.1.100?');
 
 ### AI Platform Options
 ```php
-// OpenAI
-use Symfony\AI\Platform\OpenAI\OpenAIPlatform;
-$platform = new OpenAIPlatform($apiKey);
+use Hakam\AiLogInspector\Enum\PlatformEnum;
+use Hakam\AiLogInspector\Platform\LogDocumentPlatformFactory;
 
-// Anthropic
-use Symfony\AI\Platform\Anthropic\AnthropicPlatform;
-$platform = new AnthropicPlatform($apiKey);
+// OpenAI (brain + embeddings)
+$brainPlatform = LogDocumentPlatformFactory::createBrainPlatform(
+    PlatformEnum::OPENAI,
+    [
+        'api_key' => $_ENV['OPENAI_API_KEY'],
+        'model' => 'gpt-4o-mini',
+        'model_capabilities' => ['text', 'tool_calling'],
+    ]
+);
+$embeddingPlatform = LogDocumentPlatformFactory::createEmbeddingPlatform(
+    PlatformEnum::OPENAI,
+    [
+        'api_key' => $_ENV['OPENAI_API_KEY'],
+        'model' => 'text-embedding-3-small',
+    ]
+);
 
-// Custom Platform
-class CustomPlatform implements PlatformInterface {
-    // Your implementation
-}
+// Anthropic (brain only, embeddings via OpenAI or local)
+$brainPlatform = LogDocumentPlatformFactory::createBrainPlatform(
+    PlatformEnum::ANTHROPIC,
+    [
+        'api_key' => $_ENV['ANTHROPIC_API_KEY'],
+        'model' => 'claude-3-5-sonnet-20241022',
+        'model_capabilities' => ['text', 'tool_calling'],
+    ]
+);
+
+// Ollama (local brain + local embeddings)
+$brainPlatform = LogDocumentPlatformFactory::createBrainPlatform(
+    PlatformEnum::OLLAMA,
+    [
+        'host' => 'http://localhost:11434',
+        'model' => 'llama3.2:1b',
+        'model_capabilities' => ['text', 'tool_calling'],
+    ]
+);
+$embeddingPlatform = LogDocumentPlatformFactory::createEmbeddingPlatform(
+    PlatformEnum::OLLAMA,
+    [
+        'host' => 'http://localhost:11434',
+        'model' => 'nomic-embed-text',
+    ]
+);
 ```
 
 ### Vector Store Options
 ```php
 // Memory (testing)
+use Symfony\AI\Store\Bridge\Local\InMemoryStore;
 $store = new InMemoryStore();
 
 // Production stores
@@ -201,8 +303,88 @@ $store = new PineconeStore($config);
 ```php
 $customPrompt = 'You are a security log analyzer. Focus on threats and incidents.';
 
-$agent = new LogInspectorAgent($platform, $model, $store, $customPrompt);
+$agent = new LogInspectorAgent($platform, [$logSearchTool, $requestContextTool], $customPrompt);
 ```
+
+---
+
+## 🧰 Tools & Capabilities
+
+**LogSearchTool (`log_search`)**
+- Semantic or keyword search over indexed logs
+- Returns structured results with evidence logs and AI analysis
+
+**RequestContextTool (`request_context`)**
+- Trace a request, session, or trace ID across distributed logs
+- Returns chronological log context for end-to-end debugging
+
+**Multi-tool agent example**
+- See `examples/multi-tool-agent-example.php` for intelligent tool selection
+
+---
+
+## 💬 Conversational Debugging
+
+```php
+use Hakam\AiLogInspector\Chat\LogInspectorChatFactory;
+
+$chat = LogInspectorChatFactory::createSession(
+    sessionId: 'incident-2026-02-06',
+    platform: $platform,
+    searchTool: $logSearchTool,
+    contextTool: $requestContextTool,
+    storagePath: sys_get_temp_dir() . '/log-inspector-sessions'
+);
+
+$chat->startInvestigation('Payment outage - Feb 6, 2026');
+$chat->ask('What payment errors occurred?');
+$chat->followUp('Were there any database issues around that time?');
+$summary = $chat->summarize();
+echo $summary->getContent();
+```
+
+---
+
+## 🧪 Playground API 
+
+Run the multi-platform playground API:
+
+```bash
+php -S localhost:8080 examples/playground-api.php
+```
+
+Key endpoints:
+- `GET /health`
+- `POST /init` (preload sample logs and cache vectors)
+- `POST /upload` (upload log file, index with `LogFileIndexer`)
+- `GET /logs`
+- `GET /init-status`
+- `POST /chat`
+- `POST /reset`
+
+Features:
+- Separate brain and embedding models per request
+- OpenAI, Anthropic, or Ollama per request
+- Session-based chat history
+- Cached vector store per session
+
+---
+
+Environment variables:
+- `OLLAMA_URL` (default: `http://localhost:11434`)
+- `OLLAMA_MODEL` (default: `llama3.1:8b`)
+- `CHROMA_URL` (default: `http://localhost:8000`)
+- `CHROMA_COLLECTION` (default: `log-inspector`)
+- `REDIS_URL` (default: `redis://localhost:6379`)
+- `ALLOWED_ORIGINS` (default: `*`)
+
+---
+
+## 📚 Local Docs
+
+The documentation site content is in `website/docs`.
+
+Live docs: [ramyhakam.github.io/ai-log-inspector-agent](https://ramyhakam.github.io/ai-log-inspector-agent/)
 
 ---
 
