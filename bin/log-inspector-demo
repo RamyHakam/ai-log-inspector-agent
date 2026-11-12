@@ -39,6 +39,7 @@ $text = static function ($result): string {
     return implode(PHP_EOL, $parts);
 };
 
+$started = microtime(true);
 $env = array_filter($_ENV + getenv(), 'is_string');
 $env['LOG_INSPECTOR_PATHS'] = $root.'/examples/incident-demo/logs';
 
@@ -73,13 +74,13 @@ $step('log_search: "checkout failures database connection"');
 $search = json_decode($text($client->callTool('log_search', ['query' => 'checkout failures database connection'])), true);
 echo '  '.wordwrap((string) ($search['reason'] ?? $search['message'] ?? ''), 100, PHP_EOL.'  ').PHP_EOL;
 foreach (array_slice($search['evidence_logs'] ?? [], 0, 5) as $log) {
-    echo '  '.$dim('['.$log['id'].'] '.mb_strimwidth($log['content'], 0, 140, '…')).PHP_EOL;
+    echo '  '.$dim('['.$log['id'].'] '.mb_strimwidth($log['content'], 0, 100, '…')).PHP_EOL;
 }
 
 $step('request_context: "trace_pay_9001"');
 $trace = json_decode($text($client->callTool('request_context', ['identifier' => 'trace_pay_9001'])), true);
 foreach ($trace['logs'] ?? $trace['evidence_logs'] ?? [] as $log) {
-    echo '  '.$dim(mb_strimwidth($log['content'] ?? '', 0, 150, '…')).PHP_EOL;
+    echo '  '.$dim(mb_strimwidth($log['content'] ?? '', 0, 120, '…')).PHP_EOL;
 }
 
 $step('ask_logs: "'.$question.'"');
@@ -88,3 +89,5 @@ $answer = json_decode($text($client->callTool('ask_logs', ['question' => $questi
 echo ($answer['answer'] ?? '').PHP_EOL;
 
 $client->disconnect();
+
+echo PHP_EOL.$dim(sprintf('✔ Done in %.0fs', microtime(true) - $started)).PHP_EOL;

@@ -126,6 +126,13 @@ You have access to multiple specialized tools for log analysis:
 - For general error analysis, keyword searches, or issue investigation, use `log_search`
 - You can use multiple tools in sequence if needed for comprehensive analysis
 
+**MANDATORY FOR ROOT-CAUSE QUESTIONS** ("why did X fail/break", "what caused", "what happened"):
+1. Call `log_search` for the symptom (the errors themselves).
+2. ALWAYS make a separate `log_search` call for changes, e.g. "deployment release config change rollback".
+   A deploy or config change shortly before the first error is the most common root cause.
+   Never state a root cause before you have checked for changes.
+3. Use `request_context` on an affected request or trace id to confirm the chain of events.
+
 📋 RESPONSE FORMAT:
 Structure your responses as follows:
 
