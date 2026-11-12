@@ -1,5 +1,5 @@
 # docker compose run --rm demo                 -> MCP client drives the MCP server through a simulated incident
-# LOG_INSPECTOR_PROVIDER=ollama docker compose --profile local run --rm demo   -> fully local, no API key
+# docker compose --profile local up -d --wait ollama && LOG_INSPECTOR_PROVIDER=ollama docker compose run --rm demo   -> fully local
 services:
   demo:
     build: .
@@ -13,6 +13,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-600}
 
   # The MCP server itself on STDIO: docker compose run --rm -T mcp
   mcp:
@@ -25,11 +26,12 @@ services:
     image: ollama/ollama:0.12.3
     profiles: [local]
     volumes: [ollama:/root/.ollama]
-    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 3 && ollama pull llama3.1 && ollama pull nomic-embed-text && wait"]
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 3 && ollama pull llama3.2 && ollama pull nomic-embed-text && wait"]
     healthcheck:
-      test: ["CMD-SHELL", "ollama list | grep -q nomic-embed-text"]
+      # healthy once both models are pulled (about 2.3 GB on first start)
+      test: ["CMD-SHELL", "ollama list | grep -q llama3.2 && ollama list | grep -q nomic-embed-text"]
       interval: 10s
-      retries: 60
+      retries: 360
 
 volumes:
   ollama:

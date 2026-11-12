@@ -16,6 +16,10 @@ Multi-turn conversations that maintain context across questions. Ask follow-ups,
 ### 🔍 **Request Tracing**
 Track complete request lifecycles across distributed systems with automatic correlation using request IDs, trace IDs, or session IDs.
 
+### 🔌 **MCP Server**
+Expose the tools to Claude Code, Cursor or any MCP client through the official PHP MCP SDK. Your coding agent can
+then search production logs, trace requests and run root-cause investigations. See [MCP Server](../mcp/overview.md).
+
 ### 🛠️ **Tool-Based Architecture**
 Extensible tool system powered by Symfony AI. The agent automatically selects the right tool for each query whether it's semantic search, request tracing, or pattern analysis.
 

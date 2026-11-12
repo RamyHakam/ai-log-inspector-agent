@@ -2,6 +2,20 @@
 
 Welcome to the complete documentation for the **AI Log Inspector Agent** - a production-ready PHP package for intelligent log analysis powered by AI.
 
+## 🔌 New: MCP Server
+
+Use the log inspector from **Claude Code, Cursor or any MCP client**. The server is built on the official PHP MCP SDK
+and **Symfony AI 1.0**, and exposes `log_search`, `request_context`, `ask_logs` and `index_logs`.
+
+```bash
+echo "OPENAI_API_KEY=sk-..." > .env && docker compose run --rm demo
+```
+
+- **[MCP Server](mcp/overview.md)** - Tools, resource, prompt and how they work
+- **[Connect a Client](mcp/clients.md)** - Claude Code, Cursor, Claude Desktop, Docker
+- **[Incident Demo](mcp/demo.md)** - Investigate a simulated outage in one command
+- **[Upgrading to Symfony AI 1.0](getting-started/upgrading.md)** - What changed
+
 ## 🚀 Quick Links
 
 - **[Overview](intro/overview.md)** - What is this package and why use it?

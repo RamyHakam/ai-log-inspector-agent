@@ -21,14 +21,14 @@ use Hakam\AiLogInspector\Tool\RequestContextTool;
  *  LOG_INSPECTOR_EMBEDDING_PROVIDER  openai | ollama (default: the chat provider, ollama for anthropic)
  *  LOG_INSPECTOR_EMBEDDING_MODEL     embedding model (default per provider)
  *  LOG_INSPECTOR_PATHS               comma-separated log files or directories indexed at startup
- *  OPENAI_API_KEY, ANTHROPIC_API_KEY, OLLAMA_HOST
+ *  OPENAI_API_KEY, ANTHROPIC_API_KEY, OLLAMA_HOST, OLLAMA_TIMEOUT (seconds per model call, default 300)
  */
 final class LogInspectorRuntime
 {
     private const CHAT_MODELS = [
         'openai' => 'gpt-5.4-mini',
         'anthropic' => 'claude-sonnet-5-5',
-        'ollama' => 'llama3.1',
+        'ollama' => 'llama3.2',
     ];
 
     private const EMBEDDING_MODELS = [
@@ -120,6 +120,7 @@ final class LogInspectorRuntime
             'ollama' => new LogDocumentPlatform(PlatformEnum::OLLAMA, [
                 'host' => $get('OLLAMA_HOST', 'http://localhost:11434'),
                 'model' => $model,
+                'timeout' => (float) $get('OLLAMA_TIMEOUT', '300'),
             ]),
             default => throw new \InvalidArgumentException(\sprintf('Unknown provider "%s", use openai, anthropic or ollama.', $provider)),
         };

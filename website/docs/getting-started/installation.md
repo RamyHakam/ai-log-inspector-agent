@@ -4,6 +4,7 @@
 
 - **PHP**: 8.4 or higher
 - **Composer**: 2.0 or higher
+- **Symfony AI**: 1.0 (currently beta, so allow beta packages: `composer config minimum-stability beta && composer config prefer-stable true`, see [Upgrading](upgrading.md))
 - **AI Platform**: OpenAI API key, Anthropic API key, or Ollama installed locally
 
 ## Install via Composer
@@ -17,7 +18,7 @@ The package will automatically install all required dependencies:
 - `symfony/ai-agent` - Core AI agent framework
 - `symfony/ai-platform` - Platform abstraction layer
 - `symfony/ai-store` - Vector store integration
-- `symfony/ai-chat` - Conversational interface support
+- `mcp/sdk` - Official PHP MCP SDK, powers the [MCP server](../mcp/overview.md)
 - Platform-specific packages (OpenAI, Anthropic, Ollama)
 
 ## Platform Setup

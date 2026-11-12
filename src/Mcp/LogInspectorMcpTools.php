@@ -8,6 +8,7 @@ use Hakam\AiLogInspector\Indexer\LogDocumentIndexer;
 use Hakam\AiLogInspector\Parser\LogLineParser;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Tool\RequestContextTool;
+use Mcp\Server\Exception\ToolCallException;
 
 /**
  * MCP handlers that expose the log inspector to any MCP client
@@ -67,7 +68,13 @@ final class LogInspectorMcpTools
      */
     public function askLogs(string $question): array
     {
-        $result = $this->agent->ask($question);
+        try {
+            $result = $this->agent->ask($question);
+        } catch (\Throwable $e) {
+            // ToolCallException is reported to the client as a tool error with this message,
+            // anything else becomes an opaque "Error while executing tool".
+            throw new ToolCallException(\sprintf('The log inspector agent failed: %s', $e->getMessage()), previous: $e);
+        }
         $content = $result->getContent();
 
         return ['answer' => \is_string($content) ? $content : json_encode($content, \JSON_PRETTY_PRINT)];
@@ -89,7 +96,11 @@ final class LogInspectorMcpTools
 
         $indexed = [];
         foreach ($files as $file) {
-            $indexed[$file] = $this->indexFile($file);
+            try {
+                $indexed[$file] = $this->indexFile($file);
+            } catch (\Throwable $e) {
+                throw new ToolCallException(\sprintf('Indexing "%s" failed: %s', $file, $e->getMessage()), previous: $e);
+            }
         }
 
         return [

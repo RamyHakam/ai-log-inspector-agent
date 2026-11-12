@@ -34,6 +34,18 @@ const sidebars: SidebarsConfig = {
       items: [
         'getting-started/installation',
         'getting-started/quickstart',
+        'getting-started/upgrading',
+      ],
+    },
+    {
+      type: 'category',
+      label: '🔌 MCP Server',
+      collapsed: false,
+      items: [
+        'mcp/overview',
+        'mcp/clients',
+        'mcp/configuration',
+        'mcp/demo',
       ],
     },
     {

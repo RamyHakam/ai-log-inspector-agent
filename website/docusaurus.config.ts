@@ -135,12 +135,12 @@ const config: Config = {
               to: '/docs/examples/basic-usage',
             },
             {
-              label: 'API Reference',
-              to: '/docs/api-reference/log-inspector-agent',
+              label: 'MCP Server',
+              to: '/docs/mcp/overview',
             },
             {
-              label: 'Best Practices',
-              to: '/docs/advanced/best-practices',
+              label: 'Upgrading to Symfony AI 1.0',
+              to: '/docs/getting-started/upgrading',
             },
           ],
         },
