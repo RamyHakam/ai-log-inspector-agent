@@ -104,12 +104,24 @@ composer install && php bin/log-inspector-demo
 php bin/log-inspector-demo "Were any customers charged without getting an order?"
 ```
 
-No API key? Run fully local with Ollama:
+No API key? Run fully local with Ollama. Fastest on a Mac is **native Ollama**, which uses the GPU:
 
 ```bash
-docker compose --profile local up -d ollama          # pulls llama3.1 + nomic-embed-text on first start
+ollama pull llama3.2 && ollama pull nomic-embed-text
+LOG_INSPECTOR_PROVIDER=ollama php bin/log-inspector-demo
+# or from Docker, using the Ollama on your machine:
+LOG_INSPECTOR_PROVIDER=ollama OLLAMA_HOST=http://host.docker.internal:11434 docker compose run --rm demo
+```
+
+Everything in Docker also works, but Docker on macOS has no GPU, so expect several minutes per answer:
+
+```bash
+docker compose --profile local up -d --wait ollama   # first start pulls llama3.2 + nomic-embed-text (~2.3 GB)
 LOG_INSPECTOR_PROVIDER=ollama docker compose run --rm demo
 ```
+
+Small local models give shorter, less precise answers than hosted ones. With 8 GB or more of memory, try
+`LOG_INSPECTOR_MODEL=llama3.1` (pull it first).
 
 ### Use it from Claude Code / Cursor
 
@@ -145,11 +157,12 @@ Then just ask: *"Use log-inspector to find out why checkout failed this afternoo
 | Variable | Default | |
 |---|---|---|
 | `LOG_INSPECTOR_PROVIDER` | `openai` | `openai`, `anthropic` or `ollama` |
-| `LOG_INSPECTOR_MODEL` | `gpt-5.4-mini` / `claude-sonnet-5-5` / `llama3.1` | chat model for the agent |
+| `LOG_INSPECTOR_MODEL` | `gpt-5.4-mini` / `claude-sonnet-5-5` / `llama3.2` | chat model for the agent |
 | `LOG_INSPECTOR_EMBEDDING_PROVIDER` | same as provider (`ollama` for anthropic) | `openai` or `ollama` |
 | `LOG_INSPECTOR_EMBEDDING_MODEL` | `text-embedding-3-small` / `nomic-embed-text` | |
 | `LOG_INSPECTOR_PATHS` | | comma-separated files or directories to index at startup |
-| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OLLAMA_HOST` | | provider credentials |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OLLAMA_HOST` | | provider credentials / endpoint |
+| `OLLAMA_TIMEOUT` | `300` | seconds allowed per Ollama call (CPU-only machines are slow) |
 
 The parser understands Monolog / Symfony / Laravel lines (`[ts] channel.LEVEL: message {json} [extra]`),
 `[ts] LEVEL: message` and PHP `error_log` output. It extracts `request_id`, `trace_id`, `session_id` and

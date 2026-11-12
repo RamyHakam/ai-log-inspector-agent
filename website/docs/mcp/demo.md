@@ -34,9 +34,26 @@ docker compose run --rm demo
 composer install
 php bin/log-inspector-demo "Were any customers charged without getting an order?"
 
-# Fully local with Ollama (no API key)
-docker compose --profile local up -d ollama
+```
+
+A run with OpenAI takes 20 to 40 seconds.
+
+## Fully local (no API key)
+
+
+```bash
+ollama pull llama3.2 && ollama pull nomic-embed-text
+LOG_INSPECTOR_PROVIDER=ollama php bin/log-inspector-demo
+# or from Docker, using the Ollama on your machine:
+LOG_INSPECTOR_PROVIDER=ollama OLLAMA_HOST=http://host.docker.internal:11434 docker compose run --rm demo
+```
+
+Everything in Docker also works, but Docker on macOS has no GPU, so expect several minutes per answer:
+
+```bash
+docker compose --profile local up -d --wait ollama   # first start pulls llama3.2 + nomic-embed-text (~2.3 GB)
 LOG_INSPECTOR_PROVIDER=ollama docker compose run --rm demo
 ```
 
-A run with OpenAI takes about 20 seconds. Small local models give shorter, less precise answers than hosted ones.
+Small local models give shorter, less precise answers than hosted ones. With 8 GB or more of memory, try
+`LOG_INSPECTOR_MODEL=llama3.1` (pull it first).

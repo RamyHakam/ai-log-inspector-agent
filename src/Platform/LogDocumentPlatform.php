@@ -16,6 +16,7 @@ use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\DeferredResult;
 use Symfony\AI\Platform\Result\ResultInterface;
+use Symfony\Component\HttpClient\HttpClient;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
@@ -79,7 +80,11 @@ readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
         return match ($this->platformType) {
             PlatformEnum::OPENAI => OpenAiPlatformFactory::createPlatform($this->config['api_key']),
             PlatformEnum::ANTHROPIC => AnthropicPlatformFactory::createPlatform($this->config['api_key']),
-            PlatformEnum::OLLAMA => OllamaPlatformFactory::createPlatform($this->config['host']),
+            // Local models can take minutes per call on CPU, far beyond the default 60s idle timeout.
+            PlatformEnum::OLLAMA => OllamaPlatformFactory::createPlatform(
+                $this->config['host'],
+                httpClient: HttpClient::create(['timeout' => $this->config['timeout'] ?? 300]),
+            ),
         };
     }
 

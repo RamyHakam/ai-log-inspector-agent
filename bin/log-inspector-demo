@@ -49,7 +49,7 @@ echo $dim('Symfony AI '.(Composer\InstalledVersions::getPrettyVersion('symfony/a
 $client = Client::builder()
     ->setClientInfo('log-inspector-demo', '1.0.0')
     ->setInitTimeout(120)
-    ->setRequestTimeout(300)
+    ->setRequestTimeout(1200)
     ->build();
 
 $step('Starting MCP server (php bin/log-inspector-mcp) and indexing examples/incident-demo/logs');
@@ -85,8 +85,12 @@ foreach ($trace['logs'] ?? $trace['evidence_logs'] ?? [] as $log) {
 
 $step('ask_logs: "'.$question.'"');
 echo $dim('  (the Symfony AI agent on the server picks the tools, then answers)').PHP_EOL.PHP_EOL;
-$answer = json_decode($text($client->callTool('ask_logs', ['question' => $question])), true);
-echo ($answer['answer'] ?? '').PHP_EOL;
+$result = $client->callTool('ask_logs', ['question' => $question]);
+if ($result->isError) {
+    echo "\033[31m  ".$text($result)."\033[0m".PHP_EOL;
+} else {
+    echo (json_decode($text($result), true)['answer'] ?? '').PHP_EOL;
+}
 
 $client->disconnect();
 

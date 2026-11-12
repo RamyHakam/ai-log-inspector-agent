@@ -11,13 +11,14 @@ The server reads environment variables, plus a `.env` file in the package root i
 | Variable | Default | Description |
 |---|---|---|
 | `LOG_INSPECTOR_PROVIDER` | `openai` | Chat model provider: `openai`, `anthropic` or `ollama` |
-| `LOG_INSPECTOR_MODEL` | `gpt-5.4-mini` / `claude-sonnet-5-5` / `llama3.1` | Chat model used by the agent and the tool explanations |
+| `LOG_INSPECTOR_MODEL` | `gpt-5.4-mini` / `claude-sonnet-5-5` / `llama3.2` | Chat model used by the agent and the tool explanations |
 | `LOG_INSPECTOR_EMBEDDING_PROVIDER` | the chat provider (`ollama` when it is `anthropic`) | `openai` or `ollama` (Anthropic has no embedding models) |
 | `LOG_INSPECTOR_EMBEDDING_MODEL` | `text-embedding-3-small` / `nomic-embed-text` | Embedding model for indexing and search |
 | `LOG_INSPECTOR_PATHS` | | Comma-separated log files or directories (`*.log`) indexed at startup |
 | `OPENAI_API_KEY` | | Required for `openai` |
 | `ANTHROPIC_API_KEY` | | Required for `anthropic` |
-| `OLLAMA_HOST` | `http://localhost:11434` | Ollama endpoint |
+| `OLLAMA_HOST` | `http://localhost:11434` | Ollama endpoint (`http://host.docker.internal:11434` from Docker) |
+| `OLLAMA_TIMEOUT` | `300` (`600` in docker-compose) | Seconds allowed per Ollama call. Raise it on CPU-only machines |
 
 ### Typical setups
 
@@ -30,7 +31,7 @@ LOG_INSPECTOR_PROVIDER=anthropic ANTHROPIC_API_KEY=sk-ant-... \
 LOG_INSPECTOR_EMBEDDING_PROVIDER=ollama php bin/log-inspector-mcp
 
 # Fully local, no API key
-ollama pull llama3.1 && ollama pull nomic-embed-text
+ollama pull llama3.2 && ollama pull nomic-embed-text
 LOG_INSPECTOR_PROVIDER=ollama php bin/log-inspector-mcp
 ```
 
