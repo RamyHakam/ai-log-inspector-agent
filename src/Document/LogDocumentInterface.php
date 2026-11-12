@@ -2,8 +2,8 @@
 
 namespace Hakam\AiLogInspector\Document;
 
-use Symfony\AI\Store\Document\EmbeddableDocumentInterface;
+use Symfony\AI\Store\Document\DocumentInterface;
 
-interface LogDocumentInterface extends EmbeddableDocumentInterface
+interface LogDocumentInterface extends DocumentInterface
 {
 }

@@ -78,7 +78,7 @@ Perfect for development and testing:
 ```
 
 ```php
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store as InMemoryStore;
 
 $store = new InMemoryStore();
 ```
@@ -143,7 +143,7 @@ use Hakam\AiLogInspector\Platform\LogDocumentPlatformFactory;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use Hakam\AiLogInspector\Retriever\LogRetriever;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store as InMemoryStore;
 
 echo "🤖 Testing AI Log Inspector Agent Installation\n\n";
 

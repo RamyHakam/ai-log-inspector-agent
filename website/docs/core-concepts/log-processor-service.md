@@ -35,9 +35,9 @@ All indexers extend this base class which provides:
 use Hakam\AiLogInspector\Service\LogProcessorService;
 use Hakam\AiLogInspector\DTO\LogDataDTO;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
-use Symfony\AI\Platform\Bridge\OpenAI\PlatformFactory;
+use Symfony\AI\Platform\Bridge\OpenAi\Factory as PlatformFactory;
 
-$platform = PlatformFactory::create($_ENV['OPENAI_API_KEY']);
+$platform = PlatformFactory::createPlatform($_ENV['OPENAI_API_KEY']);
 $store = new VectorLogDocumentStore();
 
 $service = new LogProcessorService(

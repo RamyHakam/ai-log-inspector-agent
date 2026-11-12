@@ -134,10 +134,10 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         $this->assertCount(1, $results);
 
         $retrieved = current($results);
-        $this->assertEquals('custom_001', $retrieved->metadata['log_id']);
-        $this->assertEquals('warning', $retrieved->metadata['level']);
-        $this->assertEquals(500, $retrieved->metadata['response_code']);
-        $this->assertEquals('payment-api', $retrieved->metadata['service']);
+        $this->assertEquals('custom_001', $retrieved->getMetadata()['log_id']);
+        $this->assertEquals('warning', $retrieved->getMetadata()['level']);
+        $this->assertEquals(500, $retrieved->getMetadata()['response_code']);
+        $this->assertEquals('payment-api', $retrieved->getMetadata()['service']);
     }
 
     public function testQueryWithMaxItemsLimit(): void
@@ -216,7 +216,7 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         $this->assertGreaterThanOrEqual(1, count($results));
 
         // Verify we can find documents with specific levels
-        $levels_found = array_map(fn ($doc) => $doc->metadata['level'] ?? null, $results);
+        $levels_found = array_map(fn ($doc) => $doc->getMetadata()['level'] ?? null, $results);
         $this->assertNotEmpty($levels_found);
     }
 
@@ -253,7 +253,7 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         $this->assertGreaterThanOrEqual(1, count($results));
 
         // Verify categories are preserved
-        $categories_found = array_map(fn ($doc) => $doc->metadata['category'] ?? null, $results);
+        $categories_found = array_map(fn ($doc) => $doc->getMetadata()['category'] ?? null, $results);
         $this->assertNotEmpty($categories_found);
     }
 
@@ -313,9 +313,9 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         $this->assertCount(1, $results);
 
         $retrieved = current($results);
-        $this->assertNull($retrieved->metadata['optional_field']);
-        $this->assertNull($retrieved->metadata['timestamp']);
-        $this->assertEquals('info', $retrieved->metadata['level']);
+        $this->assertNull($retrieved->getMetadata()['optional_field']);
+        $this->assertNull($retrieved->getMetadata()['timestamp']);
+        $this->assertEquals('info', $retrieved->getMetadata()['level']);
     }
 
     public function testStoreIsolation(): void
@@ -337,8 +337,8 @@ class VectorLogDocumentStoreInMemoryTest extends TestCase
         $results2 = iterator_to_array($store2->queryForVector($vector, ['maxItems' => 10]));
 
         // Each store should only have its own documents
-        $ids1 = array_map(fn ($doc) => $doc->metadata['log_id'], $results1);
-        $ids2 = array_map(fn ($doc) => $doc->metadata['log_id'], $results2);
+        $ids1 = array_map(fn ($doc) => $doc->getMetadata()['log_id'], $results1);
+        $ids2 = array_map(fn ($doc) => $doc->getMetadata()['log_id'], $results2);
 
         $this->assertContains('store1_001', $ids1);
         $this->assertContains('store2_001', $ids2);

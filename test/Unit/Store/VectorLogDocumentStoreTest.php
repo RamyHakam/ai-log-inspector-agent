@@ -201,9 +201,9 @@ class VectorLogDocumentStoreTest extends TestCase
         $this->assertInstanceOf(VectorDocument::class, $retrievedDoc);
 
         // Verify metadata fields
-        $this->assertEquals('payment_100', $retrievedDoc->metadata['log_id']);
-        $this->assertEquals('Payment processing failed with error code 500', $retrievedDoc->metadata['content']);
-        $this->assertEquals('error', $retrievedDoc->metadata['level']);
+        $this->assertEquals('payment_100', $retrievedDoc->getMetadata()['log_id']);
+        $this->assertEquals('Payment processing failed with error code 500', $retrievedDoc->getMetadata()['content']);
+        $this->assertEquals('error', $retrievedDoc->getMetadata()['level']);
     }
 
     public function testVectorPersistenceAcrossQueries(): void

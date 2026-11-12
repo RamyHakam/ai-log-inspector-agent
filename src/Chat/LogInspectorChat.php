@@ -3,11 +3,6 @@
 namespace Hakam\AiLogInspector\Chat;
 
 use Hakam\AiLogInspector\Agent\LogInspectorAgent;
-use Symfony\AI\Chat\Chat;
-use Symfony\AI\Chat\ChatInterface;
-use Symfony\AI\Chat\InMemory\Store as InMemoryStore;
-use Symfony\AI\Chat\ManagedStoreInterface;
-use Symfony\AI\Chat\MessageStoreInterface;
 use Symfony\AI\Platform\Message\AssistantMessage;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -29,25 +24,22 @@ use Symfony\AI\Platform\Message\UserMessage;
  * $response3 = $chat->ask('What was the root cause?'); // Knows full history!
  * ```
  */
-class LogInspectorChat implements ChatInterface
+class LogInspectorChat
 {
-    private Chat $chat;
     private bool $initialized = false;
     private int $turnCount = 0;
-    private MessageStoreInterface&ManagedStoreInterface $store;
+    private MessageBag $messages;
 
     public function __construct(
         private readonly LogInspectorAgent $agent,
-        MessageStoreInterface&ManagedStoreInterface $store,
+        private readonly ConversationStoreInterface $store,
     ) {
-        $this->store = $store ?? new InMemoryStore();
         $this->store->setup();
-
-        $this->chat = new Chat($agent, $this->store);
+        $this->messages = new MessageBag();
 
         $existingMessages = $this->store->load();
         if (count($existingMessages) > 0) {
-            $this->chat->initiate($existingMessages);
+            $this->messages = $existingMessages;
             $this->initialized = true;
             foreach ($existingMessages as $message) {
                 if ($message instanceof UserMessage) {
@@ -67,11 +59,7 @@ class LogInspectorChat implements ChatInterface
     {
         $prompt = $systemPrompt ?? $this->buildInvestigationPrompt($context);
 
-        $this->chat->initiate(new MessageBag(
-            Message::forSystem($prompt)
-        ));
-
-        $this->initialized = true;
+        $this->initiate(new MessageBag(Message::forSystem($prompt)));
     }
 
     /**
@@ -99,7 +87,7 @@ class LogInspectorChat implements ChatInterface
             $question .= "\n\n(Remember: use the log_search or request_context tool to find log data. Do not output JSON manually.)";
         }
 
-        return $this->chat->submit(Message::ofUser($question));
+        return $this->submit(Message::ofUser($question));
     }
 
     /**
@@ -179,7 +167,9 @@ class LogInspectorChat implements ChatInterface
      */
     public function initiate(MessageBag $messages): void
     {
-        $this->chat->initiate($messages);
+        $this->store->drop();
+        $this->messages = $messages;
+        $this->store->save($this->messages);
         $this->initialized = true;
     }
 
@@ -196,7 +186,23 @@ class LogInspectorChat implements ChatInterface
             $this->startInvestigation();
         }
 
-        return $this->chat->submit($message);
+        $this->messages = $this->messages->with($message);
+
+        $result = $this->agent->call($this->messages)->getResult();
+        $assistantMessage = Message::ofAssistant($result);
+
+        $this->messages = $this->messages->with($assistantMessage);
+        $this->store->save($this->messages);
+
+        return $assistantMessage;
+    }
+
+    /**
+     * The full message history of the current investigation.
+     */
+    public function getMessages(): MessageBag
+    {
+        return $this->messages;
     }
 
     /**

@@ -3,9 +3,12 @@
 namespace Hakam\AiLogInspector\Platform;
 
 use Hakam\AiLogInspector\Enum\PlatformEnum;
-use Symfony\AI\Platform\Bridge\Anthropic\PlatformFactory as AnthropicPlatformFactory;
-use Symfony\AI\Platform\Bridge\Ollama\PlatformFactory as OllamaPlatformFactory;
-use Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory as OpenAiPlatformFactory;
+use Symfony\AI\Platform\Bridge\Anthropic\Factory as AnthropicPlatformFactory;
+use Symfony\AI\Platform\Bridge\Ollama\Factory as OllamaPlatformFactory;
+use Symfony\AI\Platform\Bridge\OpenAi\Factory as OpenAiPlatformFactory;
+use Symfony\AI\Platform\Bridge\Ollama\Ollama;
+use Symfony\AI\Platform\Capability;
+use Symfony\AI\Platform\Exception\RuntimeException as PlatformRuntimeException;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Model;
@@ -13,6 +16,7 @@ use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\DeferredResult;
 use Symfony\AI\Platform\Result\ResultInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
 {
@@ -35,7 +39,17 @@ readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
         $modelName = $this->getDefaultModel();
         $catalog = $this->platform->getModelCatalog();
 
-        return $catalog->getModel($modelName);
+        try {
+            return $catalog->getModel($modelName);
+        } catch (PlatformRuntimeException $e) {
+            // Since Symfony AI 1.0 the Ollama catalog asks the running server for the model's capabilities.
+            // Building an agent must not need a reachable server, the actual model call reports the error.
+            if (PlatformEnum::OLLAMA !== $this->platformType || !$e->getPrevious() instanceof TransportExceptionInterface) {
+                throw $e;
+            }
+
+            return new Ollama($modelName, [Capability::INPUT_MESSAGES, Capability::TOOL_CALLING, Capability::OUTPUT_STRUCTURED]);
+        }
     }
 
     public function getModelCatalog(): ModelCatalogInterface
@@ -43,7 +57,7 @@ readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
         return $this->platform->getModelCatalog();
     }
 
-    public function invoke(string $model, object|array|string $input, array $options = []): DeferredResult
+    public function invoke(string|\Symfony\AI\Platform\Model $model, object|array|string $input, array $options = []): DeferredResult
     {
         return $this->platform->invoke($model, $input, $options);
     }
@@ -63,9 +77,9 @@ readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
     protected function initPlatform(): PlatformInterface
     {
         return match ($this->platformType) {
-            PlatformEnum::OPENAI => OpenAiPlatformFactory::create($this->config['api_key']),
-            PlatformEnum::ANTHROPIC => AnthropicPlatformFactory::create($this->config['api_key']),
-            PlatformEnum::OLLAMA => OllamaPlatformFactory::create($this->config['host']),
+            PlatformEnum::OPENAI => OpenAiPlatformFactory::createPlatform($this->config['api_key']),
+            PlatformEnum::ANTHROPIC => AnthropicPlatformFactory::createPlatform($this->config['api_key']),
+            PlatformEnum::OLLAMA => OllamaPlatformFactory::createPlatform($this->config['host']),
         };
     }
 

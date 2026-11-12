@@ -1,0 +1,5 @@
+[2026-11-12 14:02:10] deploy.INFO: Deployment started {"service":"checkout-api","version":"v2.14.0","previous_version":"v2.13.4","author":"ci-bot","trace_id":"deploy-7731"}
+[2026-11-12 14:03:41] deploy.INFO: Config change applied {"service":"checkout-api","key":"DATABASE_POOL_MAX","old_value":50,"new_value":5,"commit":"a91f3c2","trace_id":"deploy-7731"}
+[2026-11-12 14:04:05] deploy.INFO: Deployment finished, health checks green {"service":"checkout-api","version":"v2.14.0","pods":6,"trace_id":"deploy-7731"}
+[2026-11-12 14:47:30] deploy.WARNING: Rollback started {"service":"checkout-api","from":"v2.14.0","to":"v2.13.4","reason":"checkout error rate 38%","author":"oncall-sre","trace_id":"deploy-7740"}
+[2026-11-12 14:49:02] deploy.INFO: Rollback finished {"service":"checkout-api","version":"v2.13.4","DATABASE_POOL_MAX":50,"trace_id":"deploy-7740"}

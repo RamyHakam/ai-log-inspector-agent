@@ -2,7 +2,8 @@
 
 [![Tests](https://github.com/RamyHakam/ai-log-inspector-agent/workflows/Tests/badge.svg)](https://github.com/RamyHakam/ai-log-inspector-agent/actions/workflows/tests.yml)
 [![PHP Version](https://img.shields.io/badge/PHP-8.4%2B-blue.svg)](https://php.net)
-[![Symfony AI](https://img.shields.io/badge/Symfony%20AI-Experimental-orange.svg)](https://symfony.com/doc/current/ai.html)
+[![Symfony AI](https://img.shields.io/badge/Symfony%20AI-1.0-orange.svg)](https://symfony.com/doc/current/ai.html)
+[![MCP](https://img.shields.io/badge/MCP-server-8A2BE2.svg)](#-mcp-server-ask-your-logs-from-claude-code-cursor-)
 [![Status](https://img.shields.io/badge/Status-Experimental-red.svg)](#)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 <span style="font-size: 2em;">🇵🇸</span> **Free Palestine**
@@ -51,6 +52,108 @@ $agent->ask("How many users affected?");
 </td>
 </tr>
 </table>
+
+---
+
+## 🔌 MCP Server: ask your logs from Claude Code, Cursor, …
+
+> Built for the [Symfony AI & MCP Hackathon](https://symfony.com/hackathon) (Oct 26 – Nov 22, 2026).
+> **New in this round:** upgraded to **Symfony AI 1.0** and added an **MCP server and demo client built on the
+> official PHP MCP SDK (`mcp/sdk`)**. All of it lives in [`src/Mcp`](src/Mcp), [`src/Parser`](src/Parser),
+> [`bin/`](bin) and [`examples/incident-demo`](examples/incident-demo).
+
+Your coding agent already reads your code. Now it can **read your production logs too**: search them semantically,
+trace one request across services, and run a full root-cause investigation, all through MCP.
+
+```mermaid
+flowchart LR
+    C["MCP client<br/>Claude Code · Cursor · Inspector"] -- "STDIO · JSON-RPC" --> S["bin/log-inspector-mcp<br/>mcp/sdk Server"]
+    S --> T1["log_search"] & T2["request_context"] & T4["index_logs"]
+    S --> T3["ask_logs"] --> A["Symfony AI Agent<br/>(tool-calling loop)"]
+    A --> T1 & T2
+    T1 & T2 --> R["Retriever + vector store<br/>Symfony AI Store"]
+    T4 --> P["LogLineParser → Indexer<br/>(embeddings)"] --> R
+```
+
+| MCP element | Name | What it does |
+|---|---|---|
+| tool | `log_search` | Semantic search over indexed logs. Returns evidence plus an explanation |
+| tool | `request_context` | Every line for a `request_id` / `trace_id` / `session_id`, in order |
+| tool | `ask_logs` | Runs the server-side **Symfony AI agent**, which picks the tools and writes a root-cause report |
+| tool | `index_logs` | Index a log file or a directory of `*.log` files |
+| resource | `logs://index/stats` | Indexed sources and line counts |
+| prompt | `investigate_incident` | A step-by-step incident investigation playbook for the client model |
+
+### ⏱️ From `git clone` to a running demo in 5 minutes
+
+The demo is an MCP **client** (also `mcp/sdk`). It starts the MCP **server**, indexes a simulated outage
+([`examples/incident-demo/logs`](examples/incident-demo/logs): a deploy shrinks the DB pool from 50 to 5, checkout
+fails, and customers are charged without orders) and investigates it.
+
+```bash
+git clone https://github.com/RamyHakam/ai-log-inspector-agent && cd ai-log-inspector-agent
+echo "OPENAI_API_KEY=sk-..." > .env
+
+# Option A: Docker
+docker compose run --rm demo
+
+# Option B: local PHP 8.4
+composer install && php bin/log-inspector-demo
+
+# Ask your own question
+php bin/log-inspector-demo "Were any customers charged without getting an order?"
+```
+
+No API key? Run fully local with Ollama:
+
+```bash
+docker compose --profile local up -d ollama          # pulls llama3.1 + nomic-embed-text on first start
+LOG_INSPECTOR_PROVIDER=ollama docker compose run --rm demo
+```
+
+### Use it from Claude Code / Cursor
+
+The repository ships an [`.mcp.json`](.mcp.json). Open the folder in Claude Code and the `log-inspector` server is
+available. To use it with **your own** logs from any project:
+
+```bash
+claude mcp add log-inspector \
+  -e OPENAI_API_KEY=sk-... \
+  -e LOG_INSPECTOR_PATHS=/path/to/your-app/var/log \
+  -- php /path/to/ai-log-inspector-agent/bin/log-inspector-mcp
+```
+
+Or with Docker, which needs no local PHP:
+
+```json
+{
+  "mcpServers": {
+    "log-inspector": {
+      "command": "docker",
+      "args": ["run", "-i", "--rm", "-e", "OPENAI_API_KEY", "-e", "LOG_INSPECTOR_PATHS=/logs",
+               "-v", "/path/to/your-app/var/log:/logs:ro", "ai-log-inspector"]
+    }
+  }
+}
+```
+
+Then just ask: *"Use log-inspector to find out why checkout failed this afternoon"*, or start from the
+`investigate_incident` prompt.
+
+### Configuration (environment variables or `.env`)
+
+| Variable | Default | |
+|---|---|---|
+| `LOG_INSPECTOR_PROVIDER` | `openai` | `openai`, `anthropic` or `ollama` |
+| `LOG_INSPECTOR_MODEL` | `gpt-5.4-mini` / `claude-sonnet-5-5` / `llama3.1` | chat model for the agent |
+| `LOG_INSPECTOR_EMBEDDING_PROVIDER` | same as provider (`ollama` for anthropic) | `openai` or `ollama` |
+| `LOG_INSPECTOR_EMBEDDING_MODEL` | `text-embedding-3-small` / `nomic-embed-text` | |
+| `LOG_INSPECTOR_PATHS` | | comma-separated files or directories to index at startup |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OLLAMA_HOST` | | provider credentials |
+
+The parser understands Monolog / Symfony / Laravel lines (`[ts] channel.LEVEL: message {json} [extra]`),
+`[ts] LEVEL: message` and PHP `error_log` output. It extracts `request_id`, `trace_id`, `session_id` and
+`span_id` from the JSON context, so `request_context` can trace requests across services.
 
 ---
 
@@ -142,7 +245,7 @@ use Hakam\AiLogInspector\Retriever\LogRetriever;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Tool\RequestContextTool;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store as InMemoryStore;
 
 // Brain platform (LLM) + Embedding platform
 $brainPlatform = LogDocumentPlatformFactory::createBrainPlatform(
@@ -288,7 +391,7 @@ $embeddingPlatform = LogDocumentPlatformFactory::createEmbeddingPlatform(
 ### Vector Store Options
 ```php
 // Memory (testing)
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store as InMemoryStore;
 $store = new InMemoryStore();
 
 // Production stores
@@ -340,7 +443,7 @@ $chat->startInvestigation('Payment outage - Feb 6, 2026');
 $chat->ask('What payment errors occurred?');
 $chat->followUp('Were there any database issues around that time?');
 $summary = $chat->summarize();
-echo $summary->getContent();
+echo $summary->asText();
 ```
 
 ---

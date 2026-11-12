@@ -1,0 +1,6 @@
+[2026-11-12 14:21:31] payment.INFO: Payment authorization requested {"order_id":"ORD-55201","amount":249.00,"gateway":"stripe","trace_id":"trace_pay_9001"}
+[2026-11-12 14:21:31] doctrine.WARNING: Waiting for database connection {"pool":"payments","waited_ms":2000,"trace_id":"trace_pay_9001","service":"payment-service"}
+[2026-11-12 14:21:36] payment.INFO: Stripe charge succeeded {"order_id":"ORD-55201","charge_id":"ch_3QxL9","trace_id":"trace_pay_9001"}
+[2026-11-12 14:22:03] doctrine.ERROR: Could not persist payment result: lock wait timeout exceeded on table orders {"order_id":"ORD-55201","charge_id":"ch_3QxL9","trace_id":"trace_pay_9001","service":"payment-service"}
+[2026-11-12 14:22:03] payment.CRITICAL: Customer charged but order not confirmed {"order_id":"ORD-55201","charge_id":"ch_3QxL9","amount":249.00,"action":"needs_manual_refund_or_confirmation","trace_id":"trace_pay_9001"}
+[2026-11-12 14:30:44] payment.CRITICAL: Customer charged but order not confirmed {"order_id":"ORD-55263","charge_id":"ch_3QxM2","amount":59.00,"action":"needs_manual_refund_or_confirmation","trace_id":"trace_pay_9044"}

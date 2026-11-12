@@ -1,0 +1,3 @@
+[2026-11-12 14:10:05] security.INFO: User logged in {"user_id":8812,"ip":"81.2.69.160","session_id":"sess_4410"}
+[2026-11-12 14:33:12] security.WARNING: Authentication failure for user "admin" {"ip":"203.0.113.45","attempts":4,"timeWindow":"2min"}
+[2026-11-12 14:34:01] security.CRITICAL: Brute force attack detected and blocked {"ip":"203.0.113.45","failedAttempts":25,"targetUsers":["admin","root"],"blocked":true}

@@ -179,63 +179,6 @@ class VectorLogDocumentIndexerTest extends TestCase
      */
     private function createMockPlatform(): PlatformInterface
     {
-        return new class implements PlatformInterface {
-            public function invoke(string $model, array|string|object $input, array $options = []): DeferredResult
-            {
-                $mockResult = new class($input) implements ResultInterface {
-                    public function __construct(private array|string|object $input)
-                    {
-                    }
-
-                    public function getContent(): mixed
-                    {
-                        $inputs = is_array($this->input) ? $this->input : [$this->input];
-                        $embeddings = [];
-
-                        foreach ($inputs as $text) {
-                            $content = is_string($text) ? $text : (string) $text;
-                            $embeddings[] = [
-                                strlen($content) % 100 / 100,
-                                0.2,
-                                0.3,
-                                0.4,
-                                0.5,
-                            ];
-                        }
-
-                        return 1 === count($embeddings) ? $embeddings[0] : $embeddings;
-                    }
-                };
-
-                return new DeferredResult(
-                    fn () => $mockResult->getContent(),
-                    fn ($content) => $mockResult
-                );
-            }
-
-            public function getModelCatalog(): ModelCatalogInterface
-            {
-                return new class implements ModelCatalogInterface {
-                    public function has(string $name): bool
-                    {
-                        return true;
-                    }
-
-                    public function get(string $name): object
-                    {
-                        return new class {
-                            public function getName(): string
-                            {
-                                return 'test-model';
-                            }
-                        };
-                    }
-
-                    public function register(object $model): void
-                    {
-                    }
-                };
-            }
-        };
+        return \Hakam\AiLogInspector\Test\Support\FakeEmbeddingPlatform::create();
     }
 }

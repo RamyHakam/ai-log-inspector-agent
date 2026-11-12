@@ -1,0 +1,90 @@
+#!/usr/bin/env php
+<?php
+
+/*
+ * End-to-end demo: an MCP *client* (official PHP MCP SDK) starts the log inspector
+ * MCP *server* over STDIO, indexes a simulated production incident and investigates it.
+ *
+ *   php bin/log-inspector-demo
+ *   php bin/log-inspector-demo "Were any customers charged without an order?"
+ */
+
+use Mcp\Client\Client;
+use Mcp\Client\Transport\StdioTransport;
+use Mcp\Schema\Content\TextContent;
+use Symfony\Component\Dotenv\Dotenv;
+
+require __DIR__.'/../vendor/autoload.php';
+
+$root = dirname(__DIR__);
+if (class_exists(Dotenv::class) && is_file($root.'/.env')) {
+    (new Dotenv())->usePutenv(false)->load($root.'/.env');
+}
+
+$question = $argv[1] ?? 'Checkout broke this afternoon. What happened, what was the root cause, and what should we do now?';
+
+$bold = static fn (string $s): string => "\033[1m{$s}\033[0m";
+$dim = static fn (string $s): string => "\033[2m{$s}\033[0m";
+$step = static function (string $title) use ($bold): void {
+    echo PHP_EOL.$bold('▶ '.$title).PHP_EOL;
+};
+$text = static function ($result): string {
+    $parts = [];
+    foreach ($result->content as $content) {
+        if ($content instanceof TextContent) {
+            $parts[] = $content->text;
+        }
+    }
+
+    return implode(PHP_EOL, $parts);
+};
+
+$env = array_filter($_ENV + getenv(), 'is_string');
+$env['LOG_INSPECTOR_PATHS'] = $root.'/examples/incident-demo/logs';
+
+echo $bold('AI Log Inspector · MCP demo').PHP_EOL;
+echo $dim('Symfony AI '.(Composer\InstalledVersions::getPrettyVersion('symfony/ai-agent') ?? '?').' · mcp/sdk '.(Composer\InstalledVersions::getPrettyVersion('mcp/sdk') ?? '?')).PHP_EOL;
+
+$client = Client::builder()
+    ->setClientInfo('log-inspector-demo', '1.0.0')
+    ->setInitTimeout(120)
+    ->setRequestTimeout(300)
+    ->build();
+
+$step('Starting MCP server (php bin/log-inspector-mcp) and indexing examples/incident-demo/logs');
+$client->connect(new StdioTransport(PHP_BINARY, [$root.'/bin/log-inspector-mcp'], $root, $env));
+$server = $client->getServerInfo();
+echo '  connected to '.$server?->name.' '.$server?->version.PHP_EOL;
+
+$step('Tools the server exposes');
+foreach ($client->listTools()->tools as $tool) {
+    echo '  • '.$bold($tool->name).'  '.$dim(strtok((string) $tool->description, "\n")).PHP_EOL;
+}
+
+$step('Resource logs://index/stats');
+foreach ($client->readResource('logs://index/stats')->contents as $content) {
+    $stats = json_decode($content->text ?? '{}', true);
+    foreach ($stats['sources'] ?? [] as $source => $lines) {
+        echo '  '.basename($source).': '.$lines.' lines'.PHP_EOL;
+    }
+}
+
+$step('log_search: "checkout failures database connection"');
+$search = json_decode($text($client->callTool('log_search', ['query' => 'checkout failures database connection'])), true);
+echo '  '.wordwrap((string) ($search['reason'] ?? $search['message'] ?? ''), 100, PHP_EOL.'  ').PHP_EOL;
+foreach (array_slice($search['evidence_logs'] ?? [], 0, 5) as $log) {
+    echo '  '.$dim('['.$log['id'].'] '.mb_strimwidth($log['content'], 0, 140, '…')).PHP_EOL;
+}
+
+$step('request_context: "trace_pay_9001"');
+$trace = json_decode($text($client->callTool('request_context', ['identifier' => 'trace_pay_9001'])), true);
+foreach ($trace['logs'] ?? $trace['evidence_logs'] ?? [] as $log) {
+    echo '  '.$dim(mb_strimwidth($log['content'] ?? '', 0, 150, '…')).PHP_EOL;
+}
+
+$step('ask_logs: "'.$question.'"');
+echo $dim('  (the Symfony AI agent on the server picks the tools, then answers)').PHP_EOL.PHP_EOL;
+$answer = json_decode($text($client->callTool('ask_logs', ['question' => $question])), true);
+echo ($answer['answer'] ?? '').PHP_EOL;
+
+$client->disconnect();

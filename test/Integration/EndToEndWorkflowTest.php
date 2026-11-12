@@ -9,7 +9,8 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Platform\Model;
 use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
-use Symfony\AI\Platform\Test\InMemoryPlatform;
+use Symfony\AI\Platform\PlatformInterface;
+use Symfony\AI\Platform\Test\MockPlatformFactory;
 use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
@@ -183,7 +184,7 @@ class EndToEndWorkflowTest extends TestCase
 
     private function createMockLogDocumentPlatform(): LogDocumentPlatformInterface
     {
-        $inMemoryPlatform = new InMemoryPlatform(function (Model $model, array|string|object $input, array $options = []): string {
+        $inMemoryPlatform = MockPlatformFactory::createPlatform(function (Model $model, array|string|object $input, array $options = []): string {
             $query = is_string($input) ? $input : serialize($input);
 
             // Map different queries to appropriate responses

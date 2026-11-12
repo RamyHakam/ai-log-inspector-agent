@@ -264,7 +264,7 @@ class CachedLogsDocumentLoaderTest extends TestCase
 
         $this->assertCount(2, $documents);
 
-        $ids = array_map(fn ($doc) => $doc->getId()->toRfc4122(), $documents);
+        $ids = array_map(fn ($doc) => (string) $doc->getId(), $documents);
 
         // IDs should be unique
         $this->assertCount(2, array_unique($ids));

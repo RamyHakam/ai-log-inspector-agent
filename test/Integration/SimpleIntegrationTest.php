@@ -11,7 +11,8 @@ use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
-use Symfony\AI\Platform\Test\InMemoryPlatform;
+use Symfony\AI\Platform\PlatformInterface;
+use Symfony\AI\Platform\Test\MockPlatformFactory;
 use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
@@ -23,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
  */
 class SimpleIntegrationTest extends TestCase
 {
-    private InMemoryPlatform $symfonyPlatform;
+    private PlatformInterface $symfonyPlatform;
     private LogDocumentPlatformInterface $platform;
     private Store $store;
     private LogInspectorAgent $agent;
@@ -36,7 +37,7 @@ class SimpleIntegrationTest extends TestCase
         $this->setupTestLogData();
 
         // Create platform with response handler
-        $this->symfonyPlatform = new InMemoryPlatform(
+        $this->symfonyPlatform = MockPlatformFactory::createPlatform(
             function (Model $model, array|string|object $input, array $options = []) {
                 return $this->handleRequest($input);
             }
@@ -115,17 +116,17 @@ class SimpleIntegrationTest extends TestCase
         // Vector generation for queries (shorter inputs without "Analyze")
         if (!str_contains($inputString, 'Analyze these log entries')) {
             if (str_contains($inputString, 'database') || str_contains($inputString, 'connection')) {
-                return new VectorResult(new Vector([0.2, 0.3, 0.9, 0.1, 0.5]));
+                return new VectorResult([new Vector([0.2, 0.3, 0.9, 0.1, 0.5])]);
             }
             if (str_contains($inputString, 'authentication') || str_contains($inputString, 'security') || str_contains($inputString, 'auth') || str_contains($inputString, 'admin')) {
-                return new VectorResult(new Vector([0.1, 0.9, 0.0, 0.3, 0.7]));
+                return new VectorResult([new Vector([0.1, 0.9, 0.0, 0.3, 0.7])]);
             }
             if (str_contains($inputString, 'payment') || str_contains($inputString, 'checkout')) {
-                return new VectorResult(new Vector([0.9, 0.1, 0.2, 0.8, 0.3]));
+                return new VectorResult([new Vector([0.9, 0.1, 0.2, 0.8, 0.3])]);
             }
 
             // Default vector for unknown queries
-            return new VectorResult(new Vector([0.5, 0.5, 0.5, 0.5, 0.5]));
+            return new VectorResult([new Vector([0.5, 0.5, 0.5, 0.5, 0.5])]);
         }
 
         // Analysis responses based on log content - check the first matching log entry in order
@@ -235,20 +236,20 @@ class SimpleIntegrationTest extends TestCase
                 try {
                     // Simple vector search
                     $searchResults = $this->store->query(
-                        new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
+                        new \Symfony\AI\Store\Query\VectorQuery(new Vector([0.5, 0.5, 0.5, 0.5, 0.5])),
                         ['maxItems' => 10]
                     );
 
                     $allDocs = [];
                     foreach ($searchResults as $doc) {
                         if ($doc instanceof VectorDocument) {
-                            $metadata = $doc->metadata;
+                            $metadata = $doc->getMetadata();
                             $content = $metadata['content'] ?? 'No content';
 
                             // Simple keyword matching
                             if (str_contains(strtolower($content), strtolower($query))) {
                                 $allDocs[] = [
-                                    'id' => $metadata['log_id'] ?? $doc->id->toString(),
+                                    'id' => $metadata['log_id'] ?? (string) $doc->getId(),
                                     'content' => $content,
                                     'timestamp' => $metadata['timestamp'] ?? null,
                                     'level' => $metadata['level'] ?? 'unknown',
@@ -318,18 +319,18 @@ class SimpleIntegrationTest extends TestCase
                 try {
                     // Vector search based on query type
                     $queryVector = $this->getQueryVector($query);
-                    $searchResults = $this->store->query($queryVector, ['maxItems' => 10]);
+                    $searchResults = $this->store->query(new \Symfony\AI\Store\Query\VectorQuery($queryVector), ['maxItems' => 10]);
 
                     $relevantLogs = [];
                     foreach ($searchResults as $doc) {
                         if ($doc instanceof VectorDocument) {
-                            $metadata = $doc->metadata;
+                            $metadata = $doc->getMetadata();
                             $content = $metadata['content'] ?? 'No content';
 
                             // Enhanced keyword matching
                             if ($this->isRelevant($content, $query)) {
                                 $relevantLogs[] = [
-                                    'id' => $metadata['log_id'] ?? $doc->id->toString(),
+                                    'id' => $metadata['log_id'] ?? (string) $doc->getId(),
                                     'content' => $content,
                                     'timestamp' => $metadata['timestamp'] ?? null,
                                     'level' => $metadata['level'] ?? 'unknown',
@@ -539,7 +540,7 @@ class SimpleIntegrationTest extends TestCase
     public function testStoreAndPlatformIntegration(): void
     {
         // Test that the store and platform work together correctly
-        $results = iterator_to_array($this->store->query(new Vector([0.5, 0.5, 0.5, 0.5, 0.5])));
+        $results = iterator_to_array($this->store->query(new \Symfony\AI\Store\Query\VectorQuery(new Vector([0.5, 0.5, 0.5, 0.5, 0.5]))));
         $this->assertGreaterThan(0, count($results));
 
         $platformResult = ($this->platform)('test query');
