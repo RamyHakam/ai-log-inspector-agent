@@ -161,4 +161,15 @@ class LogDocumentPlatformTest extends TestCase
             }
         };
     }
+
+    public function testOllamaModelResolvesWithoutReachableServer(): void
+    {
+        // Port 9 (discard) refuses connections: no Ollama server is reachable.
+        $platform = new LogDocumentPlatform(PlatformEnum::OLLAMA, ['host' => 'http://127.0.0.1:9', 'model' => 'llama3.1']);
+
+        $model = $platform->getModel();
+
+        $this->assertSame('llama3.1', $model->getName());
+        $this->assertTrue($model->supports(\Symfony\AI\Platform\Capability::TOOL_CALLING));
+    }
 }

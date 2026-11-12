@@ -6,6 +6,9 @@ use Hakam\AiLogInspector\Enum\PlatformEnum;
 use Symfony\AI\Platform\Bridge\Anthropic\Factory as AnthropicPlatformFactory;
 use Symfony\AI\Platform\Bridge\Ollama\Factory as OllamaPlatformFactory;
 use Symfony\AI\Platform\Bridge\OpenAi\Factory as OpenAiPlatformFactory;
+use Symfony\AI\Platform\Bridge\Ollama\Ollama;
+use Symfony\AI\Platform\Capability;
+use Symfony\AI\Platform\Exception\RuntimeException as PlatformRuntimeException;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Model;
@@ -13,6 +16,7 @@ use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\DeferredResult;
 use Symfony\AI\Platform\Result\ResultInterface;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 
 readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
 {
@@ -35,7 +39,17 @@ readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
         $modelName = $this->getDefaultModel();
         $catalog = $this->platform->getModelCatalog();
 
-        return $catalog->getModel($modelName);
+        try {
+            return $catalog->getModel($modelName);
+        } catch (PlatformRuntimeException $e) {
+            // Since Symfony AI 1.0 the Ollama catalog asks the running server for the model's capabilities.
+            // Building an agent must not need a reachable server, the actual model call reports the error.
+            if (PlatformEnum::OLLAMA !== $this->platformType || !$e->getPrevious() instanceof TransportExceptionInterface) {
+                throw $e;
+            }
+
+            return new Ollama($modelName, [Capability::INPUT_MESSAGES, Capability::TOOL_CALLING, Capability::OUTPUT_STRUCTURED]);
+        }
     }
 
     public function getModelCatalog(): ModelCatalogInterface
