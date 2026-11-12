@@ -1,0 +1,19 @@
+[2026-11-12 14:15:02] request.INFO: Incoming HTTP request {"method":"POST","uri":"/api/checkout","request_id":"req_c1001","session_id":"sess_4410","user_id":8812}
+[2026-11-12 14:15:03] app.INFO: Order created {"order_id":"ORD-55120","amount":89.90,"currency":"EUR","request_id":"req_c1001"}
+[2026-11-12 14:15:04] request.INFO: Checkout completed {"status":200,"duration_ms":812,"request_id":"req_c1001"}
+[2026-11-12 14:18:40] doctrine.WARNING: Connection pool near capacity {"pool":"default","active":5,"max":5,"waiting":3,"service":"checkout-api"}
+[2026-11-12 14:20:11] request.INFO: Incoming HTTP request {"method":"POST","uri":"/api/checkout","request_id":"req_c1042","session_id":"sess_4477","user_id":9120}
+[2026-11-12 14:20:16] doctrine.ERROR: Doctrine\DBAL\Exception\ConnectionException: Timed out waiting for a free connection after 5000ms {"pool":"default","active":5,"max":5,"waiting":27,"request_id":"req_c1042","service":"checkout-api"}
+[2026-11-12 14:20:16] app.ERROR: Unable to reserve stock for order {"order_id":"ORD-55187","sku":"SKU-2231","request_id":"req_c1042","service":"checkout-api"}
+[2026-11-12 14:20:16] request.ERROR: Checkout failed {"status":500,"duration_ms":5104,"error":"ConnectionException","request_id":"req_c1042","session_id":"sess_4477"}
+[2026-11-12 14:21:30] request.INFO: Incoming HTTP request {"method":"POST","uri":"/api/checkout","request_id":"req_c1057","session_id":"sess_4490","user_id":7731}
+[2026-11-12 14:21:31] app.INFO: Stock reserved {"order_id":"ORD-55201","request_id":"req_c1057"}
+[2026-11-12 14:21:31] app.INFO: Calling payment-service {"order_id":"ORD-55201","amount":249.00,"request_id":"req_c1057","trace_id":"trace_pay_9001"}
+[2026-11-12 14:22:01] app.ERROR: Payment call timed out after 30000ms {"order_id":"ORD-55201","request_id":"req_c1057","trace_id":"trace_pay_9001","service":"checkout-api"}
+[2026-11-12 14:22:01] request.ERROR: Checkout failed {"status":504,"duration_ms":30410,"error":"PaymentTimeout","request_id":"req_c1057","session_id":"sess_4490"}
+[2026-11-12 14:25:00] monitor.CRITICAL: Checkout error rate above threshold {"error_rate":"38%","threshold":"5%","window":"5m","failed_orders":412,"service":"checkout-api"}
+[2026-11-12 14:26:12] doctrine.ERROR: Doctrine\DBAL\Exception\ConnectionException: Timed out waiting for a free connection after 5000ms {"pool":"default","active":5,"max":5,"waiting":41,"request_id":"req_c1103","service":"checkout-api"}
+[2026-11-12 14:26:12] request.ERROR: Checkout failed {"status":500,"duration_ms":5098,"error":"ConnectionException","request_id":"req_c1103","session_id":"sess_4521"}
+[2026-11-12 14:51:20] request.INFO: Incoming HTTP request {"method":"POST","uri":"/api/checkout","request_id":"req_c1290","session_id":"sess_4702","user_id":6620}
+[2026-11-12 14:51:21] request.INFO: Checkout completed {"status":200,"duration_ms":640,"request_id":"req_c1290"}
+[2026-11-12 14:55:00] monitor.INFO: Checkout error rate back to normal {"error_rate":"0.4%","window":"5m","service":"checkout-api"}

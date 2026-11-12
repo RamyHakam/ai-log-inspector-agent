@@ -93,27 +93,27 @@ class RealChatConversationTest extends TestCase
         echo "\n❓ Question 1: 'What payment errors occurred?'\n";
         $response1 = $chat->ask('What payment errors occurred?');
         $this->assertInstanceOf(AssistantMessage::class, $response1);
-        $this->assertNotEmpty($response1->getContent());
+        $this->assertNotEmpty($response1->asText());
 
-        echo '🤖 Response 1: '.substr($response1->getContent(), 0, 200)."...\n";
-        echo '   Length: '.strlen($response1->getContent())." characters\n";
+        echo '🤖 Response 1: '.substr($response1->asText(), 0, 200)."...\n";
+        echo '   Length: '.strlen($response1->asText())." characters\n";
 
         // Turn 2: Follow-up question (relies on context from turn 1)
         echo "\n❓ Question 2: 'What caused those errors?' (context-dependent)\n";
         $response2 = $chat->followUp('What caused those errors?');
         $this->assertInstanceOf(AssistantMessage::class, $response2);
-        $this->assertNotEmpty($response2->getContent());
+        $this->assertNotEmpty($response2->asText());
 
-        echo '🤖 Response 2: '.substr($response2->getContent(), 0, 200)."...\n";
-        echo '   Length: '.strlen($response2->getContent())." characters\n";
+        echo '🤖 Response 2: '.substr($response2->asText(), 0, 200)."...\n";
+        echo '   Length: '.strlen($response2->asText())." characters\n";
 
         echo "\n❓ Question 3: 'How can we prevent them?' (context-dependent)\n";
         $response3 = $chat->followUp('How can we prevent them?');
         $this->assertInstanceOf(AssistantMessage::class, $response3);
-        $this->assertNotEmpty($response3->getContent());
+        $this->assertNotEmpty($response3->asText());
 
-        echo '🤖 Response 3: '.substr($response3->getContent(), 0, 200)."...\n";
-        echo '   Length: '.strlen($response3->getContent())." characters\n";
+        echo '🤖 Response 3: '.substr($response3->asText(), 0, 200)."...\n";
+        echo '   Length: '.strlen($response3->asText())." characters\n";
 
         $duration = microtime(true) - $startTime;
         echo "\n⏱️  Total conversation time: ".number_format($duration, 2)."s\n";
@@ -157,7 +157,7 @@ class RealChatConversationTest extends TestCase
         $response1 = $chat1->ask('Find payment errors');
         $this->assertInstanceOf(AssistantMessage::class, $response1);
 
-        echo '🤖 Response: '.substr($response1->getContent(), 0, 150)."...\n";
+        echo '🤖 Response: '.substr($response1->asText(), 0, 150)."...\n";
 
         // Verify session was saved
         $store = new SessionMessageStore($sessionId, $this->testStoragePath);
@@ -188,7 +188,7 @@ class RealChatConversationTest extends TestCase
         $response2 = $chat2->ask('What was the impact?');
         $this->assertInstanceOf(AssistantMessage::class, $response2);
 
-        echo '🤖 Response: '.substr($response2->getContent(), 0, 150)."...\n";
+        echo '🤖 Response: '.substr($response2->asText(), 0, 150)."...\n";
 
         echo "\n✅ Session persisted and resumed successfully!\n";
     }
@@ -216,28 +216,28 @@ class RealChatConversationTest extends TestCase
         // Ask initial question to build context
         echo "\n❓ Initial Question: 'Find database errors'\n";
         $initial = $chat->ask('Find database errors');
-        echo '🤖 Response: '.substr($initial->getContent(), 0, 100)."...\n";
+        echo '🤖 Response: '.substr($initial->asText(), 0, 100)."...\n";
 
         // Test summarize()
         echo "\n📋 Testing summarize() method...\n";
         $summary = $chat->summarize();
         $this->assertInstanceOf(AssistantMessage::class, $summary);
-        $this->assertNotEmpty($summary->getContent());
-        echo '   Summary length: '.strlen($summary->getContent())." characters\n";
+        $this->assertNotEmpty($summary->asText());
+        echo '   Summary length: '.strlen($summary->asText())." characters\n";
 
         // Test getTimeline()
         echo "\n📅 Testing getTimeline() method...\n";
         $timeline = $chat->getTimeline();
         $this->assertInstanceOf(AssistantMessage::class, $timeline);
-        $this->assertNotEmpty($timeline->getContent());
-        echo '   Timeline length: '.strlen($timeline->getContent())." characters\n";
+        $this->assertNotEmpty($timeline->asText());
+        echo '   Timeline length: '.strlen($timeline->asText())." characters\n";
 
         // Test getRemediation()
         echo "\n💊 Testing getRemediation() method...\n";
         $remediation = $chat->getRemediation();
         $this->assertInstanceOf(AssistantMessage::class, $remediation);
-        $this->assertNotEmpty($remediation->getContent());
-        echo '   Remediation length: '.strlen($remediation->getContent())." characters\n";
+        $this->assertNotEmpty($remediation->asText());
+        echo '   Remediation length: '.strlen($remediation->asText())." characters\n";
 
         echo "\n✅ All helper methods working!\n";
     }
@@ -266,9 +266,9 @@ class RealChatConversationTest extends TestCase
 
         $this->assertInstanceOf(AssistantMessage::class, $response);
         $this->assertTrue($chat->isActive(), 'Chat should auto-initialize');
-        $this->assertNotEmpty($response->getContent());
+        $this->assertNotEmpty($response->asText());
 
-        echo '🤖 Response: '.substr($response->getContent(), 0, 150)."...\n";
+        echo '🤖 Response: '.substr($response->asText(), 0, 150)."...\n";
         echo "\n✅ Quick analysis with auto-initialization works!\n";
     }
 
@@ -378,32 +378,32 @@ class RealChatConversationTest extends TestCase
         // Step 1: Identify the issue
         echo "\n1️⃣  Identifying the issue...\n";
         $findings = $chat->ask('What errors occurred in the payment system?');
-        echo '   ✓ Initial findings: '.substr($findings->getContent(), 0, 100)."...\n";
+        echo '   ✓ Initial findings: '.substr($findings->asText(), 0, 100)."...\n";
 
         // Step 2: Root cause analysis
         echo "\n2️⃣  Analyzing root cause...\n";
         $rootCause = $chat->ask('What is the root cause of these payment errors?');
-        echo '   ✓ Root cause identified: '.substr($rootCause->getContent(), 0, 100)."...\n";
+        echo '   ✓ Root cause identified: '.substr($rootCause->asText(), 0, 100)."...\n";
 
         // Step 3: Impact assessment
         echo "\n3️⃣  Assessing impact...\n";
         $impact = $chat->ask('What services and users were affected?');
-        echo '   ✓ Impact assessed: '.substr($impact->getContent(), 0, 100)."...\n";
+        echo '   ✓ Impact assessed: '.substr($impact->asText(), 0, 100)."...\n";
 
         // Step 4: Timeline
         echo "\n4️⃣  Creating timeline...\n";
         $timeline = $chat->getTimeline();
-        echo '   ✓ Timeline created: '.substr($timeline->getContent(), 0, 100)."...\n";
+        echo '   ✓ Timeline created: '.substr($timeline->asText(), 0, 100)."...\n";
 
         // Step 5: Remediation
         echo "\n5️⃣  Getting remediation steps...\n";
         $remediation = $chat->getRemediation();
-        echo '   ✓ Remediation plan: '.substr($remediation->getContent(), 0, 100)."...\n";
+        echo '   ✓ Remediation plan: '.substr($remediation->asText(), 0, 100)."...\n";
 
         // Step 6: Summary
         echo "\n6️⃣  Generating summary...\n";
         $summary = $chat->summarize();
-        echo '   ✓ Summary created: '.substr($summary->getContent(), 0, 100)."...\n";
+        echo '   ✓ Summary created: '.substr($summary->asText(), 0, 100)."...\n";
 
         // Verify session persistence
         $store = new SessionMessageStore($sessionId, $this->testStoragePath);

@@ -3,9 +3,9 @@
 namespace Hakam\AiLogInspector\Platform;
 
 use Hakam\AiLogInspector\Enum\PlatformEnum;
-use Symfony\AI\Platform\Bridge\Anthropic\PlatformFactory as AnthropicPlatformFactory;
-use Symfony\AI\Platform\Bridge\Ollama\PlatformFactory as OllamaPlatformFactory;
-use Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory as OpenAiPlatformFactory;
+use Symfony\AI\Platform\Bridge\Anthropic\Factory as AnthropicPlatformFactory;
+use Symfony\AI\Platform\Bridge\Ollama\Factory as OllamaPlatformFactory;
+use Symfony\AI\Platform\Bridge\OpenAi\Factory as OpenAiPlatformFactory;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Model;
@@ -43,7 +43,7 @@ readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
         return $this->platform->getModelCatalog();
     }
 
-    public function invoke(string $model, object|array|string $input, array $options = []): DeferredResult
+    public function invoke(string|\Symfony\AI\Platform\Model $model, object|array|string $input, array $options = []): DeferredResult
     {
         return $this->platform->invoke($model, $input, $options);
     }
@@ -63,9 +63,9 @@ readonly class LogDocumentPlatform implements LogDocumentPlatformInterface
     protected function initPlatform(): PlatformInterface
     {
         return match ($this->platformType) {
-            PlatformEnum::OPENAI => OpenAiPlatformFactory::create($this->config['api_key']),
-            PlatformEnum::ANTHROPIC => AnthropicPlatformFactory::create($this->config['api_key']),
-            PlatformEnum::OLLAMA => OllamaPlatformFactory::create($this->config['host']),
+            PlatformEnum::OPENAI => OpenAiPlatformFactory::createPlatform($this->config['api_key']),
+            PlatformEnum::ANTHROPIC => AnthropicPlatformFactory::createPlatform($this->config['api_key']),
+            PlatformEnum::OLLAMA => OllamaPlatformFactory::createPlatform($this->config['host']),
         };
     }
 

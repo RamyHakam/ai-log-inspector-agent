@@ -8,7 +8,6 @@ use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\VectorDocument;
-use Symfony\Component\Uid\Uuid;
 
 #[AsTool(
     name: 'request_context',
@@ -104,14 +103,12 @@ class RequestContextTool implements LogInspectorToolInterface
 
         foreach ($searchResults as $result) {
             if ($result instanceof VectorDocument) {
-                $metadata = $result->metadata;
+                $metadata = $result->getMetadata();
                 $content = strtolower($metadata['content'] ?? '');
 
                 if (str_contains($content, $identifierLower)) {
-                    if (null === $result->score || $result->score <= $maxDistance) {
-                        $resultId = $result->id instanceof Uuid
-                            ? $result->id->toString()
-                            : (string) $result->id;
+                    if (null === $result->getScore() || $result->getScore() <= $maxDistance) {
+                        $resultId = (string) $result->getId();
                         $timestamps[$resultId] = $this->extractTimestamp($metadata);
                         $filteredResults[] = $result;
                     }
@@ -121,8 +118,8 @@ class RequestContextTool implements LogInspectorToolInterface
 
         // Sort by timestamp (chronological order)
         usort($filteredResults, function ($a, $b) use ($timestamps) {
-            $idA = $a->id instanceof Uuid ? $a->id->toString() : (string) $a->id;
-            $idB = $b->id instanceof Uuid ? $b->id->toString() : (string) $b->id;
+            $idA = (string) $a->getId();
+            $idB = (string) $b->getId();
             $timeA = $timestamps[$idA] ?? 0;
             $timeB = $timestamps[$idB] ?? 0;
 
@@ -144,16 +141,14 @@ class RequestContextTool implements LogInspectorToolInterface
 
         foreach ($allResults as $result) {
             if ($result instanceof VectorDocument) {
-                $metadata = $result->metadata;
+                $metadata = $result->getMetadata();
                 $content = strtolower($metadata['content'] ?? '');
 
                 if (str_contains($content, $identifierLower)) {
                     $score = $this->calculateIdentifierScore($content, $identifierLower);
                     $scoredResult = $result->withScore($score);
 
-                    $resultId = $scoredResult->id instanceof Uuid
-                        ? $scoredResult->id->toString()
-                        : (string) $scoredResult->id;
+                    $resultId = (string) $scoredResult->getId();
                     $timestamps[$resultId] = $this->extractTimestamp($metadata);
                     $matchingResults[] = $scoredResult;
                 }
@@ -162,8 +157,8 @@ class RequestContextTool implements LogInspectorToolInterface
 
         // Sort by timestamp (chronological order)
         usort($matchingResults, function ($a, $b) use ($timestamps) {
-            $idA = $a->id instanceof Uuid ? $a->id->toString() : (string) $a->id;
-            $idB = $b->id instanceof Uuid ? $b->id->toString() : (string) $b->id;
+            $idA = (string) $a->getId();
+            $idB = (string) $b->getId();
             $timeA = $timestamps[$idA] ?? 0;
             $timeB = $timestamps[$idB] ?? 0;
 
@@ -322,9 +317,9 @@ class RequestContextTool implements LogInspectorToolInterface
 
         foreach ($results as $result) {
             if ($result instanceof VectorDocument) {
-                $metadata = $result->metadata;
+                $metadata = $result->getMetadata();
                 $content = $metadata['content'] ?? 'No content available';
-                $logId = $metadata['log_id'] ?? $result->id->toString();
+                $logId = $metadata['log_id'] ?? (string) $result->getId();
                 $timestamp = $metadata['timestamp'] ?? null;
                 $level = $metadata['level'] ?? 'unknown';
                 $source = $metadata['source'] ?? 'unknown';

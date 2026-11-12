@@ -1,0 +1,64 @@
+[06-Feb-2026 14:22:31 UTC] PHP Fatal error:  Uncaught Error: Call to undefined method App\Service\PriceCalculator::calculateNetPrice() in /var/www/html/src/Controller/Api/PriceController.php:87
+Stack trace:
+#0 /var/www/html/vendor/symfony/http-kernel/HttpKernel.php(181): App\Controller\Api\PriceController->calculate()
+#1 /var/www/html/vendor/symfony/http-kernel/HttpKernel.php(76): Symfony\Component\HttpKernel\HttpKernel->handleRaw()
+#2 /var/www/html/vendor/symfony/http-kernel/Kernel.php(196): Symfony\Component\HttpKernel\HttpKernel->handle()
+#3 /var/www/html/public/index.php(25): Symfony\Component\HttpKernel\Kernel->handle()
+#4 {main}
+  thrown in /var/www/html/src/Controller/Api/PriceController.php on line 87
+
+[06-Feb-2026 14:22:31 UTC] PHP Stack trace:
+[06-Feb-2026 14:22:31 UTC] PHP   1. {main}() /var/www/html/public/index.php:0
+[06-Feb-2026 14:22:31 UTC] PHP   2. App\Kernel->handle() /var/www/html/public/index.php:25
+[06-Feb-2026 14:22:31 UTC] PHP   3. Symfony\Component\HttpKernel\HttpKernel->handle() /var/www/html/vendor/symfony/http-kernel/Kernel.php:196
+[06-Feb-2026 14:22:31 UTC] PHP   4. Symfony\Component\HttpKernel\HttpKernel->handleRaw() /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:76
+[06-Feb-2026 14:22:31 UTC] PHP   5. Symfony\Component\HttpKernel\HttpKernel->handleRequest() /var/www/html/vendor/symfony/http-kernel/HttpKernel.php:181
+
+[06-Feb-2026 14:22:31 UTC] PHP Warning:  Undefined array key "shipping_costs" in /var/www/html/src/DTO/PatagonaMarketPriceAttributesDTO.php on line 52
+
+[06-Feb-2026 14:22:31 UTC] PHP Notice:  Trying to access array offset on value of type null in /var/www/html/src/Service/PriceNormalizer.php on line 114
+
+[06-Feb-2026 14:22:32 UTC] PHP Deprecated:  Return type of App\Collection\PriceCollection::offsetGet($offset) should either be compatible with ArrayAccess::offsetGet(mixed $offset): mixed, or the #[\ReturnTypeWillChange] attribute should be used in /var/www/html/src/Collection/PriceCollection.php on line 18
+
+[06-Feb-2026 14:22:33 UTC] PHP Fatal error:  Allowed memory size of 536870912 bytes exhausted (tried to allocate 104857600 bytes) in /var/www/html/vendor/symfony/serializer/Normalizer/ObjectNormalizer.php on line 216
+
+[06-Feb-2026 14:22:33 UTC] PHP Stack trace:
+#0 /var/www/html/vendor/symfony/serializer/Normalizer/ObjectNormalizer.php(216): spl_object_hash()
+#1 /var/www/html/vendor/symfony/serializer/Serializer.php(168): Symfony\Component\Serializer\Normalizer\ObjectNormalizer->normalize()
+#2 /var/www/html/vendor/symfony/serializer/Serializer.php(132): Symfony\Component\Serializer\Serializer->normalize()
+#3 /var/www/html/src/Service/Export/PriceExportService.php(94): Symfony\Component\Serializer\Serializer->serialize()
+#4 /var/www/html/src/Command/ExportPricesCommand.php(52): App\Service\Export\PriceExportService->export()
+#5 /var/www/html/vendor/symfony/console/Command/Command.php(326): App\Command\ExportPricesCommand->execute()
+#6 /var/www/html/bin/console(37): Symfony\Component\Console\Command\Command->run()
+
+[06-Feb-2026 14:22:34 UTC] PHP Warning:  pg_query(): Query failed: ERROR:  relation "app_pricing_storage.rt_prices" does not exist at character 15 in /var/www/html/src/Repository/PriceRepository.php on line 211
+
+[06-Feb-2026 14:22:34 UTC] PHP Warning:  pg_query():
+    SELECT rp.id, rp.price, rp.crawled_at
+    FROM app_pricing_storage.rt_prices rp
+    WHERE rp.country = 'DE'
+      AND rp.active = true
+ in /var/www/html/src/Repository/PriceRepository.php on line 211
+
+[06-Feb-2026 14:22:35 UTC] PHP Warning:  RedisException: Connection refused in /var/www/html/vendor/predis/predis/src/Connection/AbstractConnection.php on line 155
+
+[06-Feb-2026 14:22:35 UTC] PHP Stack trace:
+#0 /var/www/html/vendor/predis/predis/src/Connection/StreamConnection.php(128): Predis\Connection\AbstractConnection->onConnectionError()
+#1 /var/www/html/vendor/predis/predis/src/Client.php(333): Predis\Connection\StreamConnection->connect()
+#2 /var/www/html/src/Cache/RedisCachePool.php(44): Predis\Client->get()
+#3 /var/www/html/src/Service/FeatureFlagService.php(61): App\Cache\RedisCachePool->get()
+#4 /var/www/html/src/EventSubscriber/RequestSubscriber.php(37): App\Service\FeatureFlagService->isEnabled()
+
+[06-Feb-2026 14:22:36 UTC] PHP Notice:  session_start(): Ignoring session_start() because a session is already active in /var/www/html/src/EventSubscriber/SessionSubscriber.php on line 28
+
+[06-Feb-2026 14:22:37 UTC] PHP Warning:  file_put_contents(/var/log/app/export/prices_2026-02-06.json): Failed to open stream: Permission denied in /var/www/html/src/Service/Export/PriceExportService.php on line 121
+
+[06-Feb-2026 14:22:38 UTC] PHP Fatal error:  Uncaught Symfony\Component\HttpClient\Exception\TransportException: Could not resolve host: api.external-pricing.com in /var/www/html/vendor/symfony/http-client/Response/CurlResponse.php:234
+Stack trace:
+#0 /var/www/html/vendor/symfony/http-client/Response/CommonResponseTrait.php(158): Symfony\Component\HttpClient\Response\CurlResponse->initialize()
+#1 /var/www/html/src/Client/ExternalPricingClient.php(72): Symfony\Component\HttpClient\Response\CurlResponse->getContent()
+#2 /var/www/html/src/Service/PriceSyncService.php(109): App\Client\ExternalPricingClient->fetchPrices()
+#3 /var/www/html/src/Command/SyncPricesCommand.php(44): App\Service\PriceSyncService->sync()
+#4 /var/www/html/vendor/symfony/console/Command/Command.php(326): App\Command\SyncPricesCommand->execute()
+#5 /var/www/html/bin/console(37): Symfony\Component\Console\Command\Command->run()
+  thrown in /var/www/html/vendor/symfony/http-client/Response/CurlResponse.php on line 234

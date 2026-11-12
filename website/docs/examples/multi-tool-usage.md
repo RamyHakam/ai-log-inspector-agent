@@ -26,7 +26,7 @@ use Hakam\AiLogInspector\Tool\LogSearchTool;
 use Hakam\AiLogInspector\Tool\RequestContextTool;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use Hakam\AiLogInspector\Retriever\LogRetriever;
-use Symfony\AI\Store\Bridge\Local\InMemoryStore;
+use Symfony\AI\Store\InMemory\Store as InMemoryStore;
 
 // Setup platform
 $platform = LogDocumentPlatformFactory::create([

@@ -11,7 +11,8 @@ use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
-use Symfony\AI\Platform\Test\InMemoryPlatform;
+use Symfony\AI\Platform\PlatformInterface;
+use Symfony\AI\Platform\Test\MockPlatformFactory;
 use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
@@ -20,7 +21,7 @@ use Symfony\Component\Uid\Uuid;
 
 class LogInspectorAgentIntegrationTest extends TestCase
 {
-    private InMemoryPlatform $symfonyPlatform;
+    private PlatformInterface $symfonyPlatform;
     private LogDocumentPlatformInterface $platform;
     private Store $store;
     private LogInspectorAgent $agent;
@@ -34,7 +35,7 @@ class LogInspectorAgentIntegrationTest extends TestCase
         $this->setupSampleLogData();
 
         // Create platform with dynamic response handler
-        $this->symfonyPlatform = new InMemoryPlatform(
+        $this->symfonyPlatform = MockPlatformFactory::createPlatform(
             function (Model $model, array|string|object $input, array $options = []) {
                 return $this->handlePlatformRequest($model, $input, $options);
             }
@@ -120,15 +121,15 @@ class LogInspectorAgentIntegrationTest extends TestCase
 
         // Handle vector generation requests (short queries)
         if (str_contains($inputString, 'checkout fail') || str_contains($inputString, '500 error')) {
-            return new VectorResult(new Vector([0.1, 0.5, 0.3, 0.8, 0.2]));
+            return new VectorResult([new Vector([0.1, 0.5, 0.3, 0.8, 0.2])]);
         }
 
         if (str_contains($inputString, 'authentication') || str_contains($inputString, 'login')) {
-            return new VectorResult(new Vector([0.8, 0.2, 0.1, 0.4, 0.7]));
+            return new VectorResult([new Vector([0.8, 0.2, 0.1, 0.4, 0.7])]);
         }
 
         if (str_contains($inputString, 'database') && !str_contains($inputString, 'Analyze')) {
-            return new VectorResult(new Vector([0.3, 0.7, 0.9, 0.1, 0.5]));
+            return new VectorResult([new Vector([0.3, 0.7, 0.9, 0.1, 0.5])]);
         }
 
         // Handle analysis requests (long prompts starting with "Analyze")
@@ -147,7 +148,7 @@ class LogInspectorAgentIntegrationTest extends TestCase
         }
 
         // Default response for unknown queries
-        return new VectorResult(new Vector([0.5, 0.5, 0.5, 0.5, 0.5]));
+        return new VectorResult([new Vector([0.5, 0.5, 0.5, 0.5, 0.5])]);
     }
 
     private function setupSampleLogData(): void
@@ -306,13 +307,13 @@ class LogInspectorAgentIntegrationTest extends TestCase
                 // Get all documents from store (simplified approach)
                 try {
                     $searchResults = $this->store->query(
-                        new Vector([0.5, 0.5, 0.5, 0.5, 0.5]),
+                        new \Symfony\AI\Store\Query\VectorQuery(new Vector([0.5, 0.5, 0.5, 0.5, 0.5])),
                         ['maxItems' => 10]
                     );
 
                     foreach ($searchResults as $doc) {
                         if ($doc instanceof VectorDocument) {
-                            $metadata = $doc->metadata;
+                            $metadata = $doc->getMetadata();
                             $content = $metadata['content'] ?? 'No content';
 
                             // Simple keyword matching
@@ -321,7 +322,7 @@ class LogInspectorAgentIntegrationTest extends TestCase
                                 || str_contains(strtolower($query), 'authentication') && str_contains(strtolower($content), 'login')
                                 || str_contains(strtolower($query), 'database') && str_contains(strtolower($content), 'database')) {
                                 $allDocs[] = [
-                                    'id' => $metadata['log_id'] ?? $doc->id->toString(),
+                                    'id' => $metadata['log_id'] ?? (string) $doc->getId(),
                                     'content' => $content,
                                     'timestamp' => $metadata['timestamp'] ?? null,
                                     'level' => $metadata['level'] ?? 'unknown',

@@ -141,7 +141,7 @@ class VectorLogDocumentIndexerFunctionalTest extends TestCase
         // Verify the content contains security-related terms
         $hasSecurityContent = false;
         foreach ($documents as $document) {
-            $text = $document->metadata->getText() ?? '';
+            $text = $document->getMetadata()->getText() ?? '';
             if (str_contains($text, 'security')
                 || str_contains($text, 'Authentication')
                 || str_contains($text, 'SQL injection')) {
@@ -174,7 +174,7 @@ class VectorLogDocumentIndexerFunctionalTest extends TestCase
         // Verify payment-related content
         $hasPaymentContent = false;
         foreach ($documents as $document) {
-            $text = $document->metadata->getText() ?? '';
+            $text = $document->getMetadata()->getText() ?? '';
             if (str_contains($text, 'payment')
                 || str_contains($text, 'Stripe')
                 || str_contains($text, 'PayPal')) {
@@ -212,68 +212,6 @@ class VectorLogDocumentIndexerFunctionalTest extends TestCase
      */
     private function createMockPlatformWithVectorizer(): PlatformInterface
     {
-        return new class implements PlatformInterface {
-            public function invoke(string $model, array|string|object $input, array $options = []): DeferredResult
-            {
-                // Generate a simple 5-dimensional vector based on input
-                $vector = new Vector([0.1, 0.2, 0.3, 0.4, 0.5]);
-                $vectorResult = new VectorResult($vector);
-
-                $resultConverter = new class($vectorResult) implements ResultConverterInterface {
-                    public function __construct(private readonly VectorResult $result)
-                    {
-                    }
-
-                    public function supports(Model $model): bool
-                    {
-                        return true;
-                    }
-
-                    public function convert(RawResultInterface $result, array $options = []): \Symfony\AI\Platform\Result\ResultInterface
-                    {
-                        return $this->result;
-                    }
-
-                    public function getTokenUsageExtractor(): ?TokenUsageExtractorInterface
-                    {
-                        return null;
-                    }
-                };
-
-                $rawResult = new class implements RawResultInterface {
-                    public function getData(): array
-                    {
-                        return [];
-                    }
-
-                    public function getDataStream(): iterable
-                    {
-                        return [];
-                    }
-
-                    public function getObject(): object
-                    {
-                        return new \stdClass();
-                    }
-                };
-
-                return new DeferredResult($resultConverter, $rawResult);
-            }
-
-            public function getModelCatalog(): ModelCatalogInterface
-            {
-                return new class implements ModelCatalogInterface {
-                    public function getModel(string $modelName): Model
-                    {
-                        return new Model($modelName, [Capability::EMBEDDINGS]);
-                    }
-
-                    public function getModels(): array
-                    {
-                        return [];
-                    }
-                };
-            }
-        };
+        return \Hakam\AiLogInspector\Test\Support\FakeEmbeddingPlatform::create();
     }
 }

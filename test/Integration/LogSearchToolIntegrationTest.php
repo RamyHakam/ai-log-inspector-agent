@@ -12,7 +12,8 @@ use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\AI\Platform\Result\VectorResult;
-use Symfony\AI\Platform\Test\InMemoryPlatform;
+use Symfony\AI\Platform\PlatformInterface;
+use Symfony\AI\Platform\Test\MockPlatformFactory;
 use Symfony\AI\Platform\Vector\Vector;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\VectorDocument;
@@ -21,7 +22,7 @@ use Symfony\Component\Uid\Uuid;
 
 class LogSearchToolIntegrationTest extends TestCase
 {
-    private InMemoryPlatform $symfonyPlatform;
+    private PlatformInterface $symfonyPlatform;
     private LogDocumentPlatformInterface $platform;
     private Store $store;
     private VectorLogStoreInterface $mockStore;
@@ -32,7 +33,7 @@ class LogSearchToolIntegrationTest extends TestCase
     {
         $this->store = new Store();
 
-        $this->symfonyPlatform = new InMemoryPlatform(
+        $this->symfonyPlatform = MockPlatformFactory::createPlatform(
             function (Model $model, array|string|object $input, array $options = []) {
                 return $this->handleRequest($input);
             }
@@ -105,29 +106,29 @@ class LogSearchToolIntegrationTest extends TestCase
 
         if (!str_contains($inputString, 'Analyze these log entries')) {
             if (str_contains($inputString, 'checkout') || str_contains($inputString, 'payment') || str_contains($inputString, 'timeout')) {
-                return new VectorResult(new Vector([0.8, 0.1, 0.2, 0.9, 0.3]));
+                return new VectorResult([new Vector([0.8, 0.1, 0.2, 0.9, 0.3])]);
             }
             if (str_contains($inputString, 'authentication') || str_contains($inputString, 'failed') || str_contains($inputString, 'login') || str_contains($inputString, 'admin')) {
-                return new VectorResult(new Vector([0.1, 0.9, 0.0, 0.2, 0.8]));
+                return new VectorResult([new Vector([0.1, 0.9, 0.0, 0.2, 0.8])]);
             }
             if (str_contains($inputString, 'memory') || str_contains($inputString, 'exhausted') || str_contains($inputString, 'performance')) {
-                return new VectorResult(new Vector([0.3, 0.4, 0.9, 0.0, 0.1]));
+                return new VectorResult([new Vector([0.3, 0.4, 0.9, 0.0, 0.1])]);
             }
             if (str_contains($inputString, 'api') || str_contains($inputString, 'external') || str_contains($inputString, 'service')) {
-                return new VectorResult(new Vector([0.6, 0.1, 0.4, 0.7, 0.5]));
+                return new VectorResult([new Vector([0.6, 0.1, 0.4, 0.7, 0.5])]);
             }
             if (str_contains($inputString, 'file') || str_contains($inputString, 'permission') || str_contains($inputString, 'denied')) {
-                return new VectorResult(new Vector([0.2, 0.7, 0.1, 0.4, 0.6]));
+                return new VectorResult([new Vector([0.2, 0.7, 0.1, 0.4, 0.6])]);
             }
             if (str_contains($inputString, 'database') || str_contains($inputString, 'connection')) {
-                return new VectorResult(new Vector([0.7, 0.2, 0.8, 0.1, 0.4]));
+                return new VectorResult([new Vector([0.7, 0.2, 0.8, 0.1, 0.4])]);
             }
             if (str_contains($inputString, 'nuclear') || str_contains($inputString, 'physics') || str_contains($inputString, 'quantum')) {
-                return new VectorResult(new Vector([0.0, 0.0, 0.0, 0.0, 0.0]));
+                return new VectorResult([new Vector([0.0, 0.0, 0.0, 0.0, 0.0])]);
             }
 
             // Default vector for other queries
-            return new VectorResult(new Vector([0.5, 0.5, 0.5, 0.5, 0.5]));
+            return new VectorResult([new Vector([0.5, 0.5, 0.5, 0.5, 0.5])]);
         }
 
         $logPositions = [
@@ -290,7 +291,7 @@ class LogSearchToolIntegrationTest extends TestCase
         $mockStore->method('queryForVector')
             ->willReturnCallback(function ($vector, $options = []) {
                 // Return documents from the real store based on similarity
-                $results = $this->store->query($vector, $options);
+                $results = $this->store->query(new \Symfony\AI\Store\Query\VectorQuery($vector), $options);
 
                 return $results;
             });
@@ -325,7 +326,7 @@ class LogSearchToolIntegrationTest extends TestCase
                     $vector = new Vector([0.5, 0.5, 0.5, 0.5, 0.5]);
                 }
 
-                return $store->query($vector, $options);
+                return $store->query(new \Symfony\AI\Store\Query\VectorQuery($vector), $options);
             });
 
         return $mockRetriever;

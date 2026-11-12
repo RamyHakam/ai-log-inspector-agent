@@ -1,0 +1,11 @@
+.env
+.git
+.idea
+.claude
+vendor
+var
+website
+test
+dev-tools
+examples/docker
+*.cache

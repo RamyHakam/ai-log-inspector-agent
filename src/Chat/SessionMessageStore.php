@@ -2,8 +2,6 @@
 
 namespace Hakam\AiLogInspector\Chat;
 
-use Symfony\AI\Chat\ManagedStoreInterface;
-use Symfony\AI\Chat\MessageStoreInterface;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\Component\Uid\Uuid;
 
@@ -26,7 +24,7 @@ use Symfony\Component\Uid\Uuid;
  * $chat->ask('What were your previous findings?'); // Has full history!
  * ```
  */
-class SessionMessageStore implements MessageStoreInterface, ManagedStoreInterface
+class SessionMessageStore implements ConversationStoreInterface
 {
     private string $storagePath;
 

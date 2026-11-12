@@ -183,9 +183,9 @@ echo $result->getContent();
 $chat = LogInspectorChatFactory::createWithOpenAI($_ENV['OPENAI_API_KEY']);
 $chat->startInvestigation('Payment incident - Jan 29');
 
-echo $chat->ask('What payment errors occurred?')->getContent();
-echo $chat->followUp('What was the root cause?')->getContent();
-echo $chat->summarize()->getContent();
+echo $chat->ask('What payment errors occurred?')->asText();
+echo $chat->followUp('What was the root cause?')->asText();
+echo $chat->summarize()->asText();
 ```
 
 ### Request Tracing

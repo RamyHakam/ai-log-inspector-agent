@@ -240,51 +240,7 @@ class LogFileProcessorServiceTest extends TestCase
      */
     private function createMockPlatform(): PlatformInterface
     {
-        return new class implements PlatformInterface {
-            public function invoke(string $model, array|string|object $input, array $options = []): DeferredResult
-            {
-                $mockResult = new class($input) implements ResultInterface {
-                    public function __construct(private array|string|object $input)
-                    {
-                    }
-
-                    public function getContent(): mixed
-                    {
-                        // Return a dummy embedding vector (1536 dimensions)
-                        return array_fill(0, 1536, 0.1);
-                    }
-                };
-
-                return new DeferredResult(
-                    fn () => $mockResult->getContent(),
-                    fn ($content) => $mockResult
-                );
-            }
-
-            public function getModelCatalog(): ModelCatalogInterface
-            {
-                return new class implements ModelCatalogInterface {
-                    public function has(string $name): bool
-                    {
-                        return true;
-                    }
-
-                    public function get(string $name): object
-                    {
-                        return new class {
-                            public function getName(): string
-                            {
-                                return 'text-embedding-3-small';
-                            }
-                        };
-                    }
-
-                    public function register(object $model): void
-                    {
-                    }
-                };
-            }
-        };
+        return \Hakam\AiLogInspector\Test\Support\FakeEmbeddingPlatform::create();
     }
 
     /**

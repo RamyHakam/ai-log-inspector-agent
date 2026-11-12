@@ -13,16 +13,16 @@
   "homepage": "https://github.com/RamyHakam/ai-log-inspector-agent",
   "require": {
     "php": "^8.4",
-    "symfony/ai-agent": "^0.3.0",
-    "symfony/ai-platform": "^0.3.0",
-    "symfony/ai-store": "^0.3.0",
-    "symfony/ai-ollama-platform": "^0.3.0",
-    "symfony/ai-open-ai-platform": "^0.3.0",
-    "symfony/ai-anthropic-platform": "^0.3.0",
+    "symfony/ai-agent": "^1.0@beta",
+    "symfony/ai-platform": "^1.0@beta",
+    "symfony/ai-store": "^1.0@beta",
+    "symfony/ai-ollama-platform": "^1.0@beta",
+    "symfony/ai-open-ai-platform": "^1.0@beta",
+    "symfony/ai-anthropic-platform": "^1.0@beta",
     "psr/log": "^3.0",
-    "symfony/ai-chat": "^0.3.0",
     "symfony/cache": "^8.0",
-    "symfony/ai-cache-store": "^0.3.0"
+    "symfony/ai-cache-store": "^1.0@beta",
+    "mcp/sdk": "^0.10"
   },
   "autoload": {
     "psr-4": {
@@ -42,5 +42,7 @@
     "symfony/test-pack": "^1.2",
     "dg/bypass-finals": "^1.9",
     "symfony/dotenv": "^8.0"
-  }
+  },
+  "minimum-stability": "beta",
+  "prefer-stable": true
 }

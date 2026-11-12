@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "log-inspector": {
+      "command": "php",
+      "args": ["bin/log-inspector-mcp"],
+      "env": {
+        "LOG_INSPECTOR_PATHS": "examples/incident-demo/logs"
+      }
+    }
+  }
+}

@@ -1,0 +1,45 @@
+#!/usr/bin/env php
+<?php
+
+/*
+ * AI Log Inspector MCP server.
+ *
+ *   php bin/log-inspector-mcp      # STDIO transport (Claude Code, Cursor, Claude Desktop, MCP Inspector)
+ *
+ * Configuration comes from environment variables (see LogInspectorRuntime) or a .env file.
+ */
+
+use Hakam\AiLogInspector\Mcp\LogInspectorMcpServerFactory;
+use Hakam\AiLogInspector\Mcp\LogInspectorRuntime;
+use Mcp\Server\Transport\StdioTransport;
+use Symfony\Component\Dotenv\Dotenv;
+
+foreach ([__DIR__.'/../vendor/autoload.php', __DIR__.'/../../../autoload.php'] as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+$root = dirname(__DIR__);
+if (class_exists(Dotenv::class) && is_file($root.'/.env')) {
+    (new Dotenv())->usePutenv(false)->load($root.'/.env');
+}
+
+$stderr = static fn (string $message) => fwrite(STDERR, '[ai-log-inspector] '.$message.PHP_EOL);
+
+try {
+    $runtime = LogInspectorRuntime::fromEnv($_ENV + $_SERVER + getenv());
+} catch (\Throwable $e) {
+    $stderr('Configuration error: '.$e->getMessage());
+    exit(1);
+}
+
+$stderr(sprintf('Using %s/%s, embeddings %s/%s', ...array_values($runtime->description)));
+foreach ($runtime->indexStartupPaths() as $path => $result) {
+    $stderr(sprintf('Indexed %s: %s', $path, ($result['success'] ?? false) ? $result['total_indexed_lines'].' lines total' : ($result['message'] ?? 'failed')));
+}
+
+$server = LogInspectorMcpServerFactory::create($runtime->tools);
+
+exit($server->run(new StdioTransport()));

@@ -1,0 +1,35 @@
+# docker compose run --rm demo                 -> MCP client drives the MCP server through a simulated incident
+# LOG_INSPECTOR_PROVIDER=ollama docker compose --profile local run --rm demo   -> fully local, no API key
+services:
+  demo:
+    build: .
+    image: ai-log-inspector
+    entrypoint: ["php", "bin/log-inspector-demo"]
+    environment: &env
+      LOG_INSPECTOR_PROVIDER: ${LOG_INSPECTOR_PROVIDER:-openai}
+      LOG_INSPECTOR_MODEL: ${LOG_INSPECTOR_MODEL:-}
+      LOG_INSPECTOR_EMBEDDING_PROVIDER: ${LOG_INSPECTOR_EMBEDDING_PROVIDER:-}
+      LOG_INSPECTOR_EMBEDDING_MODEL: ${LOG_INSPECTOR_EMBEDDING_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+
+  # The MCP server itself on STDIO: docker compose run --rm -T mcp
+  mcp:
+    image: ai-log-inspector
+    build: .
+    stdin_open: true
+    environment: *env
+
+  ollama:
+    image: ollama/ollama:0.12.3
+    profiles: [local]
+    volumes: [ollama:/root/.ollama]
+    entrypoint: ["/bin/sh", "-c", "ollama serve & sleep 3 && ollama pull llama3.1 && ollama pull nomic-embed-text && wait"]
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list | grep -q nomic-embed-text"]
+      interval: 10s
+      retries: 60
+
+volumes:
+  ollama:

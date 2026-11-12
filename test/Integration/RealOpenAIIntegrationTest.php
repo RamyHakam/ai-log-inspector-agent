@@ -11,7 +11,7 @@ use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
 use Hakam\AiLogInspector\Tool\LogSearchTool;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
-use Symfony\AI\Platform\Bridge\OpenAi\PlatformFactory;
+use Symfony\AI\Platform\Bridge\OpenAi\Factory as PlatformFactory;
 use Symfony\AI\Store\Document\Metadata;
 use Symfony\AI\Store\Document\TextDocument;
 use Symfony\AI\Store\Document\Vectorizer;
@@ -55,7 +55,7 @@ class RealOpenAIIntegrationTest extends TestCase
         }
 
         // Create OpenAI platform
-        $this->platform = PlatformFactory::create($apiKey);
+        $this->platform = PlatformFactory::createPlatform($apiKey);
         $this->store = new Store();
         $this->vectorStore = new VectorLogDocumentStore($this->store);
 

@@ -67,7 +67,7 @@ class LogInspectorChatTest extends TestCase
         $this->agent
             ->expects($this->once())
             ->method('call')
-            ->willReturn($mockResult);
+            ->willReturn($this->execution($mockResult));
 
         // Should auto-initialize
         $this->assertFalse($this->chat->isActive());
@@ -89,7 +89,7 @@ class LogInspectorChatTest extends TestCase
         $this->agent
             ->expects($this->once())
             ->method('call')
-            ->willReturn($mockResult);
+            ->willReturn($this->execution($mockResult));
 
         $this->chat->startInvestigation('Payment investigation');
 
@@ -109,7 +109,7 @@ class LogInspectorChatTest extends TestCase
         $this->agent
             ->expects($this->exactly(2))
             ->method('call')
-            ->willReturnOnConsecutiveCalls($mockResult1, $mockResult2);
+            ->willReturnOnConsecutiveCalls($this->execution($mockResult1), $this->execution($mockResult2));
 
         $this->chat->startInvestigation('Payment investigation');
 
@@ -131,7 +131,7 @@ class LogInspectorChatTest extends TestCase
         $this->agent
             ->expects($this->once())
             ->method('call')
-            ->willReturn($mockResult);
+            ->willReturn($this->execution($mockResult));
 
         $response = $this->chat->quickAnalysis($question);
 
@@ -149,7 +149,7 @@ class LogInspectorChatTest extends TestCase
         $this->agent
             ->expects($this->once())
             ->method('call')
-            ->willReturn($mockResult);
+            ->willReturn($this->execution($mockResult));
 
         $this->chat->startInvestigation();
 
@@ -168,7 +168,7 @@ class LogInspectorChatTest extends TestCase
         $this->agent
             ->expects($this->once())
             ->method('call')
-            ->willReturn($mockResult);
+            ->willReturn($this->execution($mockResult));
 
         $this->chat->startInvestigation();
 
@@ -187,7 +187,7 @@ class LogInspectorChatTest extends TestCase
         $this->agent
             ->expects($this->once())
             ->method('call')
-            ->willReturn($mockResult);
+            ->willReturn($this->execution($mockResult));
 
         $this->chat->startInvestigation();
 
@@ -219,7 +219,7 @@ class LogInspectorChatTest extends TestCase
         $this->agent
             ->expects($this->once())
             ->method('call')
-            ->willReturn($mockResult);
+            ->willReturn($this->execution($mockResult));
 
         $response = $this->chat->submit($message);
 
@@ -253,7 +253,7 @@ class LogInspectorChatTest extends TestCase
         $this->agent
             ->expects($this->exactly(3))
             ->method('call')
-            ->willReturnOnConsecutiveCalls($mockResult1, $mockResult2, $mockResult3);
+            ->willReturnOnConsecutiveCalls($this->execution($mockResult1), $this->execution($mockResult2), $this->execution($mockResult3));
 
         $this->chat->startInvestigation('Payment incident');
 
@@ -265,5 +265,13 @@ class LogInspectorChatTest extends TestCase
 
         $response3 = $this->chat->ask('How do we fix this?');
         $this->assertInstanceOf(AssistantMessage::class, $response3);
+    }
+
+    private function execution(\Symfony\AI\Platform\Result\ResultInterface $result): \Symfony\AI\Agent\Execution\ExecutionInterface
+    {
+        $execution = $this->createStub(\Symfony\AI\Agent\Execution\ExecutionInterface::class);
+        $execution->method('getResult')->willReturn($result);
+
+        return $execution;
     }
 }

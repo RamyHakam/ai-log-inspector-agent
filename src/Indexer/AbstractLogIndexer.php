@@ -10,8 +10,10 @@ use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Store\Document\LoaderInterface;
 use Symfony\AI\Store\Document\Transformer\TextSplitTransformer;
 use Symfony\AI\Store\Document\TransformerInterface;
-use Symfony\AI\Store\Indexer;
+use Symfony\AI\Store\Indexer\DocumentProcessor;
+use Symfony\AI\Store\Indexer\SourceIndexer;
 use Symfony\AI\Store\IndexerInterface;
+use Symfony\AI\Store\StoreInterface;
 
 /**
  * Provides common functionality for indexing log documents and files,
@@ -20,6 +22,7 @@ use Symfony\AI\Store\IndexerInterface;
 abstract class AbstractLogIndexer implements LogIndexerInterface
 {
     protected IndexerInterface $indexer;
+    protected DocumentProcessor $processor;
 
     /**
      * @param PlatformInterface       $embeddingPlatform The AI platform for generating embeddings
@@ -58,8 +61,11 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
      */
     protected function initializeIndexer(): void
     {
-        $this->indexer = new Indexer(
-            loader: $this->loader,
+        if (!$this->logStore instanceof StoreInterface) {
+            throw new \InvalidArgumentException(sprintf('The log store must implement "%s".', StoreInterface::class));
+        }
+
+        $this->processor = new DocumentProcessor(
             vectorizer: VectorizerFactory::create(
                 $this->embeddingPlatform,
                 $this->model,
@@ -67,6 +73,7 @@ abstract class AbstractLogIndexer implements LogIndexerInterface
             store: $this->logStore,
             transformers: $this->getTransformers(),
         );
+        $this->indexer = new SourceIndexer($this->loader, $this->processor);
     }
 
     /**

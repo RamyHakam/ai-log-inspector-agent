@@ -51,8 +51,7 @@ class LogFileIndexer extends AbstractLogIndexer
      */
     public function indexLogFile(string $logFileName, array $options = []): void
     {
-        $indexerWithSource = $this->indexer->withSource($logFileName);
-        $indexerWithSource->index($options);
+        $this->indexer->index($logFileName, $options);
     }
 
     /**
@@ -63,8 +62,7 @@ class LogFileIndexer extends AbstractLogIndexer
      */
     public function indexLogFiles(array $logFileNames, array $options = []): void
     {
-        $indexerWithSource = $this->indexer->withSource($logFileNames);
-        $indexerWithSource->index($options);
+        $this->indexer->index($logFileNames, $options);
     }
 
     /**
@@ -77,6 +75,6 @@ class LogFileIndexer extends AbstractLogIndexer
      */
     public function indexAllLogs(array $options = []): void
     {
-        $this->indexer->index($options);
+        $this->indexer->index(null, $options);
     }
 }

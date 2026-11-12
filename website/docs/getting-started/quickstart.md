@@ -121,20 +121,20 @@ $chat->startInvestigation('Payment failure investigation - Jan 29, 2024');
 // Ask multiple related questions
 echo "Question 1:\n";
 $response1 = $chat->ask('What payment errors occurred?');
-echo $response1->getContent() . "\n\n";
+echo $response1->asText() . "\n\n";
 
 echo "Question 2:\n";
 $response2 = $chat->followUp('How many retry attempts were made?');
-echo $response2->getContent() . "\n\n";
+echo $response2->asText() . "\n\n";
 
 echo "Question 3:\n";
 $response3 = $chat->ask('What should we do to prevent this?');
-echo $response3->getContent() . "\n\n";
+echo $response3->asText() . "\n\n";
 
 // Get a summary
 echo "Summary:\n";
 $summary = $chat->summarize();
-echo $summary->getContent() . "\n";
+echo $summary->asText() . "\n";
 ```
 
 ## Real-World Example: Load Logs from Files
@@ -148,10 +148,10 @@ use Hakam\AiLogInspector\Agent\LogInspectorAgentFactory;
 use Hakam\AiLogInspector\Indexer\LogFileIndexer;
 use Hakam\AiLogInspector\Document\CachedLogsDocumentLoader;
 use Hakam\AiLogInspector\Store\VectorLogDocumentStore;
-use Symfony\AI\Platform\Bridge\OpenAI\PlatformFactory;
+use Symfony\AI\Platform\Bridge\OpenAi\Factory as PlatformFactory;
 
 // Create platform and store
-$platform = PlatformFactory::create($_ENV['OPENAI_API_KEY']);
+$platform = PlatformFactory::createPlatform($_ENV['OPENAI_API_KEY']);
 $store = new VectorLogDocumentStore();
 
 // Create a loader pointing to your logs directory

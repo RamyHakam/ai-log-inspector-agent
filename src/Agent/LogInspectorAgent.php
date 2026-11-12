@@ -5,10 +5,11 @@ namespace Hakam\AiLogInspector\Agent;
 use Hakam\AiLogInspector\Platform\LogDocumentPlatformInterface;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\AgentInterface;
-use Symfony\AI\Agent\Toolbox\AgentProcessor;
+use Symfony\AI\Agent\Execution\ExecutionInterface;
 use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\Message\UserMessage;
 use Symfony\AI\Platform\Result\ResultInterface;
 
 final class LogInspectorAgent implements AgentInterface
@@ -20,21 +21,19 @@ final class LogInspectorAgent implements AgentInterface
         private readonly iterable $tools,
         private ?string $systemPrompt = null,
     ) {
-        $toolbox = new Toolbox($this->tools);
-        $processor = new AgentProcessor($toolbox);
         $this->agent = new Agent(
             $this->platform->getPlatform(),
             $this->platform->getModel()->getName(),
-            inputProcessors: [$processor],
-            outputProcessors: [$processor]
+            name: 'log_inspector',
+            toolbox: new Toolbox($this->tools),
         );
 
         $this->systemPrompt = $systemPrompt ?? self::getDefaultSystemPrompt();
     }
 
-    public function call(MessageBag $messages, array $options = []): ResultInterface
+    public function call(string|MessageBag|UserMessage $input, array $options = []): ExecutionInterface
     {
-        return $this->agent->call($messages, $options);
+        return $this->agent->call($input, $options);
     }
 
     public function getName(): string
@@ -49,7 +48,12 @@ final class LogInspectorAgent implements AgentInterface
             Message::ofUser($question),
         );
 
-        return $this->agent->call($messages);
+        return $this->agent->call($messages)->getResult();
+    }
+
+    public function getSystemPrompt(): string
+    {
+        return $this->systemPrompt;
     }
 
     /**
@@ -83,12 +87,15 @@ When investigating issues, follow this systematic approach:
    - Look for cascading failures or dependencies
 
 3. **Determine Root Cause(s)**
+   - What changed shortly BEFORE the first error? Explicitly search for deployments, releases,
+     config or feature-flag changes and infrastructure events, and compare old vs new values
    - What is the fundamental reason this occurred?
    - Distinguish between symptoms and actual causes
    - Consider infrastructure, code, configuration, and external factors
 
 4. **Assess Impact and Scope**
    - How many users/requests were affected?
+   - Is there data or money impact that needs follow-up (e.g. customers charged without an order)?
    - What business functions were impacted?
    - How long did the issue persist?
 

@@ -80,7 +80,7 @@ class LogSearchTool implements LogInspectorToolInterface
         foreach ($searchResults as $result) {
             if ($result instanceof VectorDocument) {
                 // Accept results with no score (distance not computed) or within threshold
-                if (null === $result->score || $result->score <= $maxDistance) {
+                if (null === $result->getScore() || $result->getScore() <= $maxDistance) {
                     $filteredResults[] = $result;
                 }
             }
@@ -108,9 +108,9 @@ class LogSearchTool implements LogInspectorToolInterface
 
         foreach ($results as $result) {
             if ($result instanceof VectorDocument) {
-                $metadata = $result->metadata;
+                $metadata = $result->getMetadata();
                 $content = $metadata['content'] ?? 'No content available';
-                $logId = $metadata['log_id'] ?? $result->id->toString();
+                $logId = $metadata['log_id'] ?? (string) $result->getId();
 
                 $logContents[] = $content;
                 // Ensure tags is always an array
@@ -210,7 +210,7 @@ class LogSearchTool implements LogInspectorToolInterface
 
         foreach ($allResults as $result) {
             if ($result instanceof VectorDocument) {
-                $metadata = $result->metadata;
+                $metadata = $result->getMetadata();
                 $content = strtolower($metadata['content'] ?? '');
                 $category = strtolower($metadata['category'] ?? '');
                 $level = strtolower($metadata['level'] ?? '');
@@ -266,11 +266,11 @@ class LogSearchTool implements LogInspectorToolInterface
         }
 
         // Sort by relevance score (descending)
-        usort($matchingResults, fn ($a, $b) => ($b->score ?? 0) <=> ($a->score ?? 0));
+        usort($matchingResults, fn ($a, $b) => ($b->getScore() ?? 0) <=> ($a->getScore() ?? 0));
 
         // Apply relevance threshold and limit results
         $filteredResults = array_slice(
-            array_filter($matchingResults, fn ($result) => ($result->score ?? 0) >= 0.1),
+            array_filter($matchingResults, fn ($result) => ($result->getScore() ?? 0) >= 0.1),
             0,
             self::MAX_RESULTS
         );

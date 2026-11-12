@@ -42,7 +42,7 @@ readonly class LogDocument implements LogDocumentInterface
         foreach ($this->rowMetadata as $key => $value) {
             $metadata[$key] = $value;
         }
-        if (!isset($this->metadata['timestamp'])) {
+        if (!isset($metadata['timestamp'])) {
             $metadata['timestamp'] = new \DateTime()->format(\DateTimeInterface::ATOM);
         }
 

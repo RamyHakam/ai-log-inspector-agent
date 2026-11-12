@@ -8,6 +8,7 @@ use Hakam\AiLogInspector\Store\VectorLogStoreInterface;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Store\Document\Loader\InMemoryLoader;
 use Symfony\AI\Store\Document\LoaderInterface;
+use Symfony\AI\Store\Indexer\DocumentIndexer;
 
 /**
  * Indexer for individual log documents.
@@ -51,7 +52,6 @@ class LogDocumentIndexer extends AbstractLogIndexer
      */
     public function indexLogDocuments(array $logDocuments): void
     {
-        $this->indexer->withSource($logDocuments);
-        $this->indexer->index($logDocuments);
+        (new DocumentIndexer($this->processor))->index($logDocuments);
     }
 }

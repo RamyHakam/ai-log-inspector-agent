@@ -8,3 +8,10 @@
 /*.md
 !README.md
 /var/.php-cs-fixer.cache
+
+# Local secrets
+.env
+.env.local
+/var/
+.DS_Store
+.php-cs-fixer.cache
